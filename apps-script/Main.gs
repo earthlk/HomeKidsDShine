@@ -74,6 +74,15 @@ const ROUTES = {
   getMe:          { fn: (s)    => getMe(s) },
   changePassword: { fn: (s, p) => changePassword(s, p) },
   getDashboard:   { fn: (s)    => getDashboard(s) },
+
+  // Phase 2 — ผู้ปกครองและเด็ก
+  getPeople:        { fn: (s)    => getPeople(s) },
+  saveParent:       { roles: [ROLE.ADMIN], fn: (s, p) => saveParent(s, p) },
+  saveChild:        { roles: [ROLE.ADMIN], fn: (s, p) => saveChild(s, p) },
+  createFamily:     { roles: [ROLE.ADMIN], fn: (s, p) => createFamily(s, p) },
+  removeParent:     { roles: [ROLE.ADMIN], fn: (s, p) => removeParent(s, p) },
+  removeChild:      { roles: [ROLE.ADMIN], fn: (s, p) => removeChild(s, p) },
+  getLinkableUsers: { roles: [ROLE.ADMIN], fn: (s)    => getLinkableUsers(s) },
 };
 
 // ห่อ logout ให้รับ session แทน token
