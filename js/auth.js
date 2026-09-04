@@ -1,5 +1,5 @@
 // ============================================================
-// Little Stars — auth.js
+// Homey Kids D Shine — auth.js
 // เข้าสู่ระบบ / ออกจากระบบ
 // ============================================================
 
@@ -12,7 +12,7 @@ const Auth = {
         <div class="signin__inner">
           <div class="signin__mark">${ICON.star}</div>
 
-          <h1 class="signin__title">ศูนย์ฝึกเด็กเล็ก<br>Little Stars</h1>
+          <h1 class="signin__title">Homey Kids D Shine</h1>
           <p class="signin__lede">เข้าสู่ระบบเพื่อดูตารางฝึก บันทึกกิจกรรม และติดตามคอร์ส</p>
 
           <div id="signinError"></div>
