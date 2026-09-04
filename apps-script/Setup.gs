@@ -1,5 +1,5 @@
 // ============================================================
-// Little Stars — Setup.gs
+// Homey Kids D Shine — Setup.gs
 // รันครั้งเดียวตอนติดตั้ง ไม่ใช่ส่วนของระบบที่ทำงานประจำ
 // ============================================================
 //
@@ -12,7 +12,7 @@
 
 // ── ขั้นที่ 1: สร้าง Spreadsheet ใหม่พร้อมทุกชีต ────────────
 function createNewSpreadsheet() {
-  const ss = SpreadsheetApp.create('Little Stars — ฐานข้อมูล');
+  const ss = SpreadsheetApp.create('Homey Kids D Shine — ฐานข้อมูล');
 
   Object.keys(SCHEMA).forEach((name, i) => {
     const headers = SCHEMA[name];
@@ -23,7 +23,7 @@ function createNewSpreadsheet() {
       .setValues([headers])
       .setFontWeight('bold')
       .setFontColor('#FFFFFF')
-      .setBackground('#226B54');
+      .setBackground('#A96246');
 
     sheet.setFrozenRows(1);
     // ตัดคอลัมน์ว่างที่เกินออก ให้ getLastColumn() คืนค่าตรงกับ schema
@@ -44,7 +44,7 @@ function createNewSpreadsheet() {
 
 // ── ขั้นที่ 2: สร้างบัญชีผู้ดูแลระบบตัวแรก ──────────────────
 function createAdminUser() {
-  const EMAIL    = 'admin@littlestars.com';
+  const EMAIL    = 'admin@homeykids.com';
   const PASSWORD = 'Admin@1234';          // เปลี่ยนทันทีหลังเข้าใช้งานครั้งแรก
   const NAME     = 'ผู้ดูแลระบบ';
 

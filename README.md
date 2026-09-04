@@ -1,4 +1,4 @@
-# Little Stars
+# Homey Kids D Shine
 
 ระบบจัดการศูนย์ฝึกเด็กเล็ก — ตารางนัด บันทึกกิจกรรม คอร์ส และการเงิน
 หน้าเว็บเป็น static site บน GitHub Pages ส่วนหลังบ้านเป็น Google Apps Script
@@ -34,7 +34,7 @@ apps-script/            วางในโปรเจ็กต์ Apps Script (
 
 ### 1. สร้าง repo
 
-สร้าง repo ใหม่บน GitHub ชื่ออะไรก็ได้ ตัวอย่างนี้ใช้ `littlestars`
+สร้าง repo ใหม่บน GitHub ชื่ออะไรก็ได้ ตัวอย่างนี้ใช้ `homeykids`
 ตั้งเป็น Public เพราะ GitHub Pages ต้องการ (แผน Free)
 
 อัปโหลดไฟล์ทั้งหมดจากโฟลเดอร์นี้ขึ้นไปที่ root ของ repo
@@ -45,7 +45,7 @@ git init
 git add .
 git commit -m "ตั้งต้นระบบ Phase 1"
 git branch -M main
-git remote add origin https://github.com/USERNAME/littlestars.git
+git remote add origin https://github.com/USERNAME/homeykids.git
 git push -u origin main
 ```
 
@@ -54,7 +54,7 @@ git push -u origin main
 Settings → Pages → Source เลือก `Deploy from a branch`
 Branch เลือก `main` โฟลเดอร์ `/ (root)` แล้ว Save
 
-รอสักครู่จะได้ URL หน้าตาแบบ `https://USERNAME.github.io/littlestars/`
+รอสักครู่จะได้ URL หน้าตาแบบ `https://USERNAME.github.io/homeykids/`
 
 ### 3. สร้างโปรเจ็กต์ Apps Script ใหม่
 
@@ -71,7 +71,7 @@ Branch เลือก `main` โฟลเดอร์ `/ (root)` แล้ว S
 
 ### 5. สร้างบัญชีผู้ดูแลระบบ
 
-รัน `createAdminUser` จะได้ `admin@littlestars.com` / `Admin@1234`
+รัน `createAdminUser` จะได้ `admin@homeykids.com` / `Admin@1234`
 เปลี่ยนรหัสผ่านทันทีหลังเข้าใช้งานครั้งแรก
 
 ### 6. ตรวจว่าติดตั้งครบ
@@ -106,7 +106,7 @@ Deploy → New deployment → ประเภท Web app
 
 ```js
 GAS_URL:  'URL จากขั้นที่ 8',
-SITE_URL: 'https://USERNAME.github.io/littlestars/',
+SITE_URL: 'https://USERNAME.github.io/homeykids/',
 ```
 
 commit แล้ว push

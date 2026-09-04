@@ -1,5 +1,5 @@
 // ============================================================
-// Little Stars — Main.gs
+// Homey Kids D Shine — Main.gs
 // จุดรับ request ทั้งหมด + ตารางเส้นทาง action
 // ============================================================
 //
@@ -12,7 +12,7 @@
 // ============================================================
 
 function doGet(e) {
-  return json({ ok: true, data: { service: 'Little Stars API', time: nowTH() } });
+  return json({ ok: true, data: { service: 'Homey Kids D Shine API', time: nowTH() } });
 }
 
 function doPost(e) {

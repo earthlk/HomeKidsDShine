@@ -99,7 +99,8 @@ const UI = {
 
 // ── ไอคอน (SVG ในตัว ไม่พึ่งไลบรารีภายนอก) ──────────────────
 const ICON = {
-  star:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-2.9L6.7 19.6l1.1-6L3.4 9.4l6-.8z"/></svg>',
+  // เครื่องหมายแบรนด์ — หลังคาบ้านกับหน้าต่างสี่ช่อง วาดตามโลโก้
+  brand:    '<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 14.6L14 4l11.4 10.6"/><g fill="currentColor" stroke="none"><rect x="10.5" y="11.2" width="3.1" height="3.1" rx="0.9"/><rect x="14.4" y="11.2" width="3.1" height="3.1" rx="0.9"/><rect x="10.5" y="15.1" width="3.1" height="3.1" rx="0.9"/><rect x="14.4" y="15.1" width="3.1" height="3.1" rx="0.9"/></g></svg>',
   home:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 21v-7h6v7"/></svg>',
   calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   note:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h9l5 5v13a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1z"/><path d="M14 3v5h5M8 13h8M8 17h5"/></svg>',

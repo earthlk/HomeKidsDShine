@@ -1,6 +1,6 @@
 /* ============================================================
    Homey Kids D Shine — app.css
-   Phase 1: reset, หน้าล็อกอิน, โครงหน้า, ส่วนประกอบพื้นฐาน
+   Phase 1: reset, หน้าเข้าสู่ระบบ, โครงหน้า, ส่วนประกอบพื้นฐาน
    ============================================================ */
 
 /* ── Reset ─────────────────────────────────────────────────── */
@@ -13,18 +13,18 @@ body {
   font-size: var(--t-base);
   line-height: 1.6;
   color: var(--ink);
-  background: var(--paper);
+  background: var(--cream);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
 }
 
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; border: none; background: none; }
-a { color: var(--pine); }
+a { color: var(--clay); }
 
 /* โฟกัสต้องมองเห็นได้เสมอ สำหรับคนที่ใช้คีย์บอร์ด */
 :focus-visible {
-  outline: 2px solid var(--pine);
+  outline: 2px solid var(--clay);
   outline-offset: 2px;
   border-radius: var(--r-sm);
 }
@@ -39,8 +39,23 @@ a { color: var(--pine); }
 
 .is-hidden { display: none !important; }
 
-/* ── หน้าล็อกอิน ───────────────────────────────────────────── */
-/* จงใจไม่ใช้การ์ดลอยบนพื้นไล่สี ให้ตัวอักษรทำหน้าที่นำสายตาแทน */
+/* ── ตราสัญลักษณ์และชื่อศูนย์ ──────────────────────────────── */
+/* บ้านหลังคาแหลมพร้อมหน้าต่างสี่ช่อง วาดตามโลโก้ของศูนย์ */
+.signin__mark, .rail__mark { color: var(--clay); line-height: 0; }
+.signin__mark svg { width: 66px; height: 57px; }
+.rail__mark svg   { width: 40px; height: 34px; }
+
+/* คำว่า Shine วางเยื้องขึ้นเหมือนในโลโก้ */
+.signin__shine, .rail__shine {
+  font-size: 0.5em;
+  font-weight: 500;
+  margin-left: 0.35em;
+  vertical-align: 0.5em;
+  letter-spacing: 0.02em;
+}
+
+/* ── หน้าเข้าสู่ระบบ ───────────────────────────────────────── */
+/* จงใจไม่ใช้การ์ดลอยบนพื้นไล่สี ให้ตราสัญลักษณ์กับตัวอักษรนำสายตา */
 .signin {
   min-height: 100vh;
   display: grid;
@@ -50,27 +65,20 @@ a { color: var(--pine); }
 
 .signin__inner { width: 100%; max-width: 360px; }
 
-.signin__mark {
-  width: 44px; height: 44px;
-  display: grid; place-items: center;
-  background: var(--pine);
-  border-radius: var(--r-md);
-  margin-bottom: var(--sp-5);
-}
-.signin__mark svg { width: 24px; height: 24px; }
+.signin__mark { margin-bottom: var(--sp-4); }
 
 .signin__title {
   font-family: var(--font-head);
   font-size: var(--t-xl);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--clay);
+  margin-bottom: var(--sp-2);
 }
 
 .signin__lede {
   color: var(--mist);
   font-size: var(--t-sm);
-  margin-top: var(--sp-2);
   margin-bottom: var(--sp-6);
 }
 
@@ -105,8 +113,8 @@ a { color: var(--pine); }
 .field__input::placeholder { color: var(--mist); }
 .field__input:focus {
   outline: none;
-  border-color: var(--pine);
-  box-shadow: 0 0 0 3px var(--pine-tint);
+  border-color: var(--clay);
+  box-shadow: 0 0 0 3px var(--clay-tint);
 }
 
 /* ช่องรหัสผ่านที่มีปุ่มสลับการมองเห็น */
@@ -136,9 +144,11 @@ a { color: var(--pine); }
   transition: background-color 0.15s, border-color 0.15s;
 }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+/* SVG ไม่มีขนาดในตัว ถ้าไม่กำหนดจะขยายจนดันข้อความตกบรรทัด */
+.btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 
-.btn--primary { background: var(--pine); color: #fff; }
-.btn--primary:hover:not(:disabled) { background: var(--pine-dark); }
+.btn--primary { background: var(--clay); color: #fff; }
+.btn--primary:hover:not(:disabled) { background: var(--clay-dark); }
 
 .btn--ghost {
   background: var(--card);
@@ -147,8 +157,8 @@ a { color: var(--pine); }
 }
 .btn--ghost:hover:not(:disabled) { border-color: var(--mist); }
 
-.btn--danger { background: var(--clay-tint); color: var(--clay); }
-.btn--danger:hover:not(:disabled) { background: #F2D2CF; }
+.btn--danger { background: var(--coral-tint); color: var(--coral); }
+.btn--danger:hover:not(:disabled) { background: #F5D8D4; }
 
 .btn--block { width: 100%; }
 
@@ -160,8 +170,8 @@ a { color: var(--pine); }
   font-size: var(--t-sm);
   margin-bottom: var(--sp-4);
 }
-.notice--error { background: var(--clay-tint); color: var(--clay); }
-.notice--info  { background: var(--pine-tint); color: var(--pine-dark); }
+.notice--error { background: var(--coral-tint); color: var(--coral); }
+.notice--info  { background: var(--sage-tint);  color: var(--sage); }
 
 /* ── โครงหน้าแอป ───────────────────────────────────────────── */
 .shell { display: flex; min-height: 100vh; }
@@ -186,23 +196,46 @@ a { color: var(--pine); }
   padding: var(--sp-4);
   border-bottom: 1px solid var(--line-soft);
 }
-.rail__mark {
-  width: 34px; height: 34px;
-  display: grid; place-items: center;
-  background: var(--pine);
-  border-radius: var(--r-sm);
-  flex-shrink: 0;
-}
-.rail__mark svg { width: 19px; height: 19px; }
 .rail__name {
   font-family: var(--font-head);
-  font-weight: 700;
-  font-size: var(--t-sm);
-  line-height: 1.2;
+  font-weight: 600;
+  font-size: var(--t-base);
+  line-height: 1.15;
+  color: var(--clay);
 }
 .rail__role { font-size: var(--t-xs); color: var(--mist); }
 
-.rail__nav { flex: 1; padding: var(--sp-3); overflow-y: auto; }
+/* ป้ายผู้ใช้ที่ล็อกอินอยู่ */
+.rail__user {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3);
+  background: var(--cream);
+  border-radius: var(--r-md);
+}
+.rail__avatar {
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--clay);
+  color: #fff;
+  border-radius: var(--r-pill);
+  font-family: var(--font-head);
+  font-weight: 500;
+  font-size: var(--t-sm);
+}
+.rail__username {
+  font-weight: 500;
+  font-size: var(--t-sm);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rail__nav { flex: 1; padding: var(--sp-2) var(--sp-3); overflow-y: auto; }
 
 .navlink {
   display: flex;
@@ -217,10 +250,10 @@ a { color: var(--pine); }
   margin-bottom: 2px;
   transition: background-color 0.15s;
 }
-.navlink:hover { background: var(--paper); }
+.navlink:hover { background: var(--cream); }
 .navlink[aria-current='page'] {
-  background: var(--pine-tint);
-  color: var(--pine-dark);
+  background: var(--clay-tint);
+  color: var(--clay-dark);
   font-weight: 600;
 }
 .navlink svg { width: 19px; height: 19px; flex-shrink: 0; }
@@ -243,9 +276,27 @@ a { color: var(--pine); }
 .topbar__title {
   font-family: var(--font-head);
   font-size: var(--t-md);
-  font-weight: 600;
+  font-weight: 500;
 }
+.topbar__title { flex: 1; min-width: 0; }
 .topbar__date { font-size: var(--t-sm); color: var(--mist); }
+
+/* ตราสัญลักษณ์และปุ่มบัญชีบนแถบบน — แสดงเฉพาะมือถือที่แถบซ้ายถูกซ่อน */
+.topbar__mark { display: none; color: var(--clay); line-height: 0; }
+.topbar__mark svg { width: 32px; height: 27px; }
+
+.topbar__account {
+  display: none;
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  place-items: center;
+  background: var(--clay);
+  color: #fff;
+  border-radius: var(--r-pill);
+  font-family: var(--font-head);
+  font-weight: 500;
+  font-size: var(--t-sm);
+}
 
 .page { flex: 1; padding: var(--sp-5); }
 
@@ -271,8 +322,16 @@ a { color: var(--pine); }
   font-size: var(--t-xs);
   color: var(--mist);
 }
-.tabbar__item[aria-current='page'] { color: var(--pine); font-weight: 600; }
+.tabbar__item[aria-current='page'] { color: var(--clay); font-weight: 600; }
 .tabbar__item svg { width: 21px; height: 21px; }
+/* ป้ายยาวต้องถูกตัด ไม่ปล่อยให้ดันแท็บข้างเคียงจนล้นจอ */
+.tabbar__item span {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── การ์ด ─────────────────────────────────────────────────── */
 .card {
@@ -282,12 +341,18 @@ a { color: var(--pine); }
   padding: var(--sp-5);
 }
 
+.card__title {
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 500;
+}
+
 /* ── สถานะว่าง — เชิญให้ลงมือ ไม่ใช่แค่บอกว่าไม่มีข้อมูล ──── */
 .empty { padding: var(--sp-7) var(--sp-5); text-align: center; }
 .empty__title {
   font-family: var(--font-head);
   font-size: var(--t-md);
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: var(--sp-2);
 }
 .empty__text {
@@ -299,10 +364,11 @@ a { color: var(--pine); }
 
 /* ── ตัวหมุนระหว่างโหลด ────────────────────────────────────── */
 .loading { display: grid; place-items: center; gap: var(--sp-3); padding: var(--sp-7); }
+.loading p { color: var(--mist); font-size: var(--t-sm); }
 .spinner {
   width: 28px; height: 28px;
   border: 2.5px solid var(--line);
-  border-top-color: var(--pine);
+  border-top-color: var(--clay);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
@@ -316,19 +382,19 @@ a { color: var(--pine); }
   transform: translateX(-50%);
   max-width: min(420px, calc(100vw - 32px));
   background: var(--ink);
-  color: var(--paper);
+  color: var(--cream);
   padding: 11px 18px;
   border-radius: var(--r-pill);
   font-size: var(--t-sm);
   box-shadow: var(--shadow-pop);
   z-index: 100;
 }
-.toast--error { background: var(--clay); color: #fff; }
+.toast--error { background: var(--coral); color: #fff; }
 
 /* ── กล่องซ้อน ─────────────────────────────────────────────── */
 .sheet {
   position: fixed; inset: 0;
-  background: rgba(20, 38, 31, 0.42);
+  background: rgba(61, 47, 34, 0.44);
   display: grid;
   place-items: center;
   padding: var(--sp-4);
@@ -347,7 +413,7 @@ a { color: var(--pine); }
 .sheet__title {
   font-family: var(--font-head);
   font-size: var(--t-md);
-  font-weight: 600;
+  font-weight: 500;
   margin-bottom: var(--sp-4);
 }
 .sheet__actions {
@@ -363,6 +429,9 @@ a { color: var(--pine); }
   .tabbar { display: flex; }
   .page { padding: var(--sp-4); padding-bottom: calc(var(--tabbar-h) + var(--sp-5)); }
   .topbar { padding: var(--sp-3) var(--sp-4); }
+  .topbar__date { display: none; }
+  .topbar__mark { display: block; }
+  .topbar__account { display: grid; }
   .signin__title { font-size: var(--t-lg); }
   .sheet { place-items: end center; padding: 0; }
   .sheet__box {

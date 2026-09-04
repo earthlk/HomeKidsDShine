@@ -10,9 +10,9 @@ const Auth = {
     document.getElementById('root').innerHTML = `
       <div class="signin">
         <div class="signin__inner">
-          <div class="signin__mark">${ICON.star}</div>
+          <div class="signin__mark">${ICON.brand}</div>
 
-          <h1 class="signin__title">Homey Kids D Shine</h1>
+          <h1 class="signin__title">Homey Kids D<span class="signin__shine">Shine</span></h1>
           <p class="signin__lede">เข้าสู่ระบบเพื่อดูตารางฝึก บันทึกกิจกรรม และติดตามคอร์ส</p>
 
           <div id="signinError"></div>

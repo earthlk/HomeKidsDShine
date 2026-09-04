@@ -6,12 +6,15 @@
 // ── เมนูของแต่ละสิทธิ์ ──────────────────────────────────────
 // ลำดับในนี้คือลำดับที่แสดงจริง สี่รายการแรกจะขึ้นบนแท็บล่างของมือถือ
 // จึงต้องเรียงรายการที่ใช้บ่อยที่สุดไว้ก่อน
+//
+// short คือป้ายสั้นสำหรับแท็บล่างบนมือถือ ซึ่งกว้างแค่ราวหนึ่งในสี่ของจอ
+// ถ้าไม่ใส่จะใช้ label เต็มแล้วข้อความล้นขอบ
 const NAV = {
   admin: [
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางนัด',      icon: 'calendar' },
-    { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note' },
-    { id: 'people',   label: 'เด็กและผู้ปกครอง', icon: 'people' },
+    { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note',   short: 'บันทึก' },
+    { id: 'people',   label: 'เด็กและผู้ปกครอง', icon: 'people', short: 'เด็ก' },
     { id: 'courses',  label: 'คอร์ส',          icon: 'book' },
     { id: 'finance',  label: 'การเงิน',        icon: 'wallet' },
     { id: 'receipt',  label: 'ใบเสร็จ',        icon: 'receipt' },
@@ -21,14 +24,14 @@ const NAV = {
   trainer: [
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางสอน',      icon: 'calendar' },
-    { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note' },
+    { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note', short: 'บันทึก' },
     { id: 'finance',  label: 'ค่าสอน',        icon: 'wallet' },
   ],
   parent: [
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางเรียน',    icon: 'calendar' },
     { id: 'courses',  label: 'คอร์สของเรา',   icon: 'book' },
-    { id: 'people',   label: 'ข้อมูลบุตรหลาน', icon: 'people' },
+    { id: 'people',   label: 'ข้อมูลบุตรหลาน', icon: 'people', short: 'บุตรหลาน' },
   ],
 };
 
@@ -75,21 +78,28 @@ const App = {
     // แท็บล่างแสดงสี่รายการแรกเท่านั้น ที่เหลือเข้าถึงผ่านหน้าภาพรวม
     const tabs = items.slice(0, 4).map(item => `
       <button class="tabbar__item" data-page="${item.id}">
-        ${ICON[item.icon]}<span>${item.label}</span>
+        ${ICON[item.icon]}<span>${item.short || item.label}</span>
       </button>`).join('');
 
     document.getElementById('root').innerHTML = `
       <div class="shell">
         <aside class="rail">
           <div class="rail__brand">
-            <div class="rail__mark">${ICON.star}</div>
+            <div class="rail__mark">${ICON.brand}</div>
             <div>
-              <div class="rail__name">${UI.esc(name)}</div>
-              <div class="rail__role">${ROLE_LABEL[role] || role}</div>
+              <div class="rail__name">Homey Kids D<span class="rail__shine">Shine</span></div>
+              <div class="rail__role">ศูนย์ฝึกเด็กเล็ก</div>
             </div>
           </div>
           <nav class="rail__nav">${railLinks}</nav>
           <div class="rail__foot">
+            <div class="rail__user">
+              <div class="rail__avatar">${UI.esc((name || '?').charAt(0))}</div>
+              <div style="min-width:0">
+                <div class="rail__username">${UI.esc(name)}</div>
+                <div class="rail__role">${ROLE_LABEL[role] || role}</div>
+              </div>
+            </div>
             <button class="btn btn--ghost btn--block" id="signoutBtn">
               ${ICON.exit}<span>ออกจากระบบ</span>
             </button>
@@ -98,8 +108,12 @@ const App = {
 
         <div class="main">
           <header class="topbar">
+            <div class="topbar__mark">${ICON.brand}</div>
             <h1 class="topbar__title" id="pageTitle">ภาพรวม</h1>
             <span class="topbar__date">${UI.thaiDate(UI.today())}</span>
+            <button class="topbar__account" id="accountBtn" aria-label="บัญชีของฉัน">
+              ${UI.esc((name || '?').charAt(0))}
+            </button>
           </header>
           <main class="page" id="page"></main>
         </div>
@@ -111,6 +125,45 @@ const App = {
       btn.onclick = () => App.go(btn.dataset.page);
     });
     document.getElementById('signoutBtn').onclick = () => Auth.signOut();
+    document.getElementById('accountBtn').onclick = () => App.openAccount();
+  },
+
+  // ── กล่องบัญชีของฉัน ──────────────────────────────────────
+  // ทางเข้าสู่การออกจากระบบสำหรับผู้ใช้มือถือ และเมนูที่ไม่ได้อยู่บนแท็บล่าง
+  openAccount() {
+    const role  = Store.get('role');
+    const name  = Store.get('name') || '';
+    const items = NAV[role] || [];
+    const rest  = items.slice(4);
+
+    const more = rest.length ? `
+      <p style="font-size:var(--t-xs);color:var(--mist);margin-bottom:var(--sp-2)">เมนูอื่น</p>
+      <div style="margin-bottom:var(--sp-4)">
+        ${rest.map(i => `<button class="navlink" data-jump="${i.id}">
+          ${ICON[i.icon]}<span>${i.label}</span></button>`).join('')}
+      </div>` : '';
+
+    UI.openSheet(`
+      <div class="sheet__title">บัญชีของฉัน</div>
+      <div class="rail__user" style="margin-bottom:var(--sp-4)">
+        <div class="rail__avatar">${UI.esc(name.charAt(0))}</div>
+        <div style="min-width:0">
+          <div class="rail__username">${UI.esc(name)}</div>
+          <div class="rail__role">${ROLE_LABEL[role] || role}</div>
+        </div>
+      </div>
+      ${more}
+      <button class="btn btn--ghost btn--block" id="sheetSignout">
+        ${ICON.exit}<span>ออกจากระบบ</span>
+      </button>`);
+
+    document.querySelectorAll('[data-jump]').forEach(btn => {
+      btn.onclick = () => { UI.closeSheet(); App.go(btn.dataset.jump); };
+    });
+    document.getElementById('sheetSignout').onclick = () => {
+      UI.closeSheet();
+      Auth.signOut();
+    };
   },
 
   // ── เปลี่ยนหน้า ───────────────────────────────────────────
