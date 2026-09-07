@@ -274,11 +274,12 @@ a { color: var(--clay); }
   position: sticky; top: 0; z-index: 20;
 }
 .topbar__title {
+  flex: 1;
+  min-width: 0;
   font-family: var(--font-head);
   font-size: var(--t-md);
   font-weight: 500;
 }
-.topbar__title { flex: 1; min-width: 0; }
 .topbar__date { font-size: var(--t-sm); color: var(--mist); }
 
 /* ตราสัญลักษณ์และปุ่มบัญชีบนแถบบน — แสดงเฉพาะมือถือที่แถบซ้ายถูกซ่อน */
@@ -684,3 +685,788 @@ textarea.field__input { resize: vertical; min-height: 62px; }
   .drow2 { flex-direction: column; gap: 0; }
   .drow2__k { min-width: 0; }
 }
+
+/* ── ตัวหมุนในปุ่มระหว่างรอหลังบ้านตอบ ─────────────────────── */
+.btn__spin {
+  width: 14px; height: 14px;
+  flex-shrink: 0;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.7;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ============================================================
+   Phase 3 — คอร์สและการลงทะเบียน
+   ============================================================ */
+
+.btn--sm { padding: 7px 14px; font-size: var(--t-xs); }
+
+.ecard, .ccard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.ecard { cursor: pointer; transition: border-color 0.15s; }
+.ecard:hover { border-color: var(--clay); }
+/* เหลือน้อยกว่าสามครั้ง คือจังหวะที่ต้องชวนต่อคอร์ส */
+.ecard--low { border-left: 4px solid var(--honey); }
+.ccard--off { opacity: 0.6; }
+
+.ecard__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.ecard__child {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.ecard__course { font-size: var(--t-sm); color: var(--mist); }
+.ecard__foot { font-size: var(--t-xs); color: var(--mist); }
+.ccard__desc { font-size: var(--t-sm); color: var(--ink-soft); }
+.ccard__actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ── แถบความคืบหน้า ────────────────────────────────────────── */
+/* สองช่วงในแถบเดียว ครั้งที่สอนแล้วกับครั้งที่นัดไว้แล้ว
+   แยกสีเพื่อให้เห็นว่าเหลือครั้งที่ยังไม่ได้นัดอยู่เท่าไร */
+.bar {
+  display: flex;
+  height: 8px;
+  background: var(--line-soft);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.bar__done   { background: var(--sage); }
+.bar__booked { background: var(--honey); opacity: 0.55; }
+
+/* ── ตัวเลขสรุป ────────────────────────────────────────────── */
+.tally { display: flex; gap: var(--sp-2); }
+.tally--wide { padding: var(--sp-4) 0; }
+.tally__item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.tally__num {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  line-height: 1.1;
+}
+.tally__num--done   { color: var(--sage); }
+.tally__num--booked { color: var(--honey); }
+.tally__num--low    { color: var(--coral); }
+.tally__num--muted  { color: var(--mist); font-weight: 500; }
+.tally__label {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.pchip--ok { background: var(--sage-tint); color: var(--sage); }
+
+/* ── รายการประวัติการฝึก ───────────────────────────────────── */
+.hrow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.hrow:last-child { border-bottom: none; }
+.hrow--cancelled { opacity: 0.55; }
+.hrow__no {
+  width: 26px; height: 26px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--cream);
+  border-radius: var(--r-pill);
+  font-family: var(--font-head);
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+.hrow__main { flex: 1; min-width: 0; }
+.hrow__date { font-size: var(--t-sm); }
+.hrow__note { font-size: var(--t-xs); color: var(--mist); line-height: 1.5; }
+
+/* ป้ายสถานะต้องไม่ถูกบีบเมื่อชื่อคอร์สยาว ไม่งั้นตัดเป็น "กำลังเรี..." */
+.ecard__head .pchip { flex-shrink: 0; }
+
+/* ── แถบกรองแบบป้ายกด ──────────────────────────────────────── */
+.chipbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.chipbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 5px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.chipbtn:hover { border-color: var(--mist); }
+.chipbtn.is-on {
+  background: var(--clay-tint);
+  border-color: var(--clay);
+  color: var(--clay-dark);
+  font-weight: 600;
+}
+.chipbtn__n { font-family: var(--font-head); font-size: var(--t-xs); opacity: 0.7; }
+
+/* รายการที่ปิดแล้ว ยังอ่านได้แต่ไม่ต้องเด่น */
+.ecard--closed { opacity: 0.62; }
+
+/* ── ปุ่มโหลดข้อมูลใหม่พร้อมนับถอยหลัง ─────────────────────── */
+.syncbtn {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--mist);
+  font-size: var(--t-xs);
+  transition: border-color 0.15s, color 0.15s;
+}
+.syncbtn:hover { border-color: var(--clay); color: var(--clay); }
+.syncbtn svg { width: 15px; height: 15px; }
+.syncbtn__t { font-family: var(--font-head); font-variant-numeric: tabular-nums; }
+.syncbtn.is-spinning svg { animation: spin 0.8s linear infinite; }
+
+@media (max-width: 768px) {
+  /* บนมือถือเหลือแค่ไอคอน ตัวเลขนับถอยหลังกินที่เกินไป */
+  .syncbtn { padding: 6px; }
+  .syncbtn__t { display: none; }
+}
+
+/* ============================================================
+   Phase 4 — ตารางนัด
+   ============================================================ */
+
+.calbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+.calnav { display: flex; align-items: center; gap: var(--sp-2); flex: 1; }
+.calnav__arrow {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: var(--t-md);
+  line-height: 1;
+}
+.calnav__arrow:hover { border-color: var(--clay); color: var(--clay); }
+.calnav__label {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 500;
+  min-width: 9.5em;
+  text-align: center;
+}
+
+/* ── มุมมองเดือน ────────────────────────────────────────────── */
+.mgrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.mcell__name {
+  background: var(--cream);
+  padding: var(--sp-2);
+  text-align: center;
+  font-size: var(--t-xs);
+  color: var(--mist);
+  font-weight: 500;
+}
+.mcell {
+  background: var(--card);
+  min-height: 104px;
+  padding: var(--sp-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+}
+.mcell:hover { background: var(--cream); }
+.mcell--pad { background: var(--line-soft); cursor: default; }
+.mcell--pad:hover { background: var(--line-soft); }
+.mcell--today { background: var(--clay-tint); }
+.mcell__num {
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  color: var(--mist);
+  margin-bottom: 2px;
+}
+.mcell--today .mcell__num { color: var(--clay); font-weight: 600; }
+.mcell__more { font-size: var(--t-xs); color: var(--mist); }
+
+/* นัดในช่องวัน ต้องอ่านชื่อเด็กออกในพื้นที่แคบ */
+.mev {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  width: 100%;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  background: var(--sage-tint);
+  border-left: 3px solid var(--sage);
+  font-size: var(--t-xs);
+  text-align: left;
+  overflow: hidden;
+}
+.mev:hover { filter: brightness(0.97); }
+.mev__t { color: var(--mist); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.mev__n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mev--completed { background: var(--line-soft); border-left-color: var(--mist); }
+.mev--cancelled { background: var(--line-soft); border-left-color: var(--line);
+                  text-decoration: line-through; opacity: 0.6; }
+
+/* ── มุมมองสัปดาห์ ──────────────────────────────────────────── */
+.wgrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.wcol { background: var(--card); display: flex; flex-direction: column; }
+.wcol--today { background: var(--clay-tint); }
+.wcol__head {
+  padding: var(--sp-2);
+  text-align: center;
+  border-bottom: 1px solid var(--line-soft);
+  cursor: pointer;
+}
+.wcol__day { display: block; font-size: var(--t-xs); color: var(--mist); }
+.wcol__num { display: block; font-family: var(--font-head); font-size: var(--t-md); }
+.wcol--today .wcol__num { color: var(--clay); font-weight: 600; }
+.wcol__body { padding: var(--sp-2); display: flex; flex-direction: column; gap: var(--sp-2); }
+.wcol__empty { text-align: center; color: var(--line); }
+
+.wev {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--sp-2);
+  border-radius: var(--r-sm);
+  background: var(--sage-tint);
+  border-left: 3px solid var(--sage);
+  text-align: left;
+  overflow: hidden;
+}
+.wev:hover { filter: brightness(0.97); }
+.wev__t { font-size: var(--t-xs); color: var(--mist); font-variant-numeric: tabular-nums; }
+.wev__n { font-size: var(--t-sm); font-weight: 500;
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wev__s { font-size: var(--t-xs); color: var(--mist);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wev--completed { background: var(--line-soft); border-left-color: var(--mist); }
+.wev--cancelled { background: var(--line-soft); border-left-color: var(--line); opacity: 0.6; }
+
+/* ── มุมมองรายการ ───────────────────────────────────────────── */
+.agroup { margin-bottom: var(--sp-5); }
+.agroup__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line);
+}
+.agroup__num {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+}
+.agroup__head--today .agroup__num { color: var(--clay); }
+.agroup__day, .agroup__mon { font-size: var(--t-sm); color: var(--mist); }
+.agroup__n { margin-left: auto; font-size: var(--t-xs); color: var(--mist); }
+
+.acard {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sp-2) var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-2);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  text-align: left;
+  transition: border-color 0.15s;
+}
+.acard:hover { border-color: var(--clay); }
+.acard--cancelled { opacity: 0.55; }
+
+.acard__time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+.acard__from { font-family: var(--font-head); font-size: var(--t-sm); font-weight: 500; }
+.acard__to   { font-size: var(--t-xs); color: var(--mist); }
+
+.acard__main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.acard__name { font-weight: 500; font-size: var(--t-sm); }
+.acard__meta {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* ข้อควรระวังต้องเห็นตั้งแต่ในรายการ ไม่ต้องกดเข้าไปดู */
+.acard__alert { font-size: var(--t-xs); color: var(--coral); }
+
+@media (max-width: 768px) {
+  .calbar { gap: var(--sp-2); }
+  .calnav { width: 100%; }
+  .calnav__label { flex: 1; font-size: var(--t-sm); min-width: 0; }
+  .calbar .segbar { flex: 1; }
+  .calbar .segbar__btn { flex: 1; justify-content: center; padding: 7px 8px; }
+  .calbar .btn--primary { width: 100%; }
+
+  /* ตารางเดือนบนจอแคบ ตัดเหลือแค่จุดบอกว่ามีนัด */
+  .mcell { min-height: 62px; padding: 4px; }
+  .mev { padding: 1px 4px; }
+  .mev__t { display: none; }
+  .mcell__more { font-size: 10px; }
+
+  /* สัปดาห์บนจอแคบ เลื่อนแนวนอนแทนการบีบให้แคบจนอ่านไม่ออก */
+  .wgrid { grid-template-columns: repeat(7, 132px); overflow-x: auto; }
+}
+
+/* ── มุมมองการ์ดของตารางนัด ────────────────────────────────── */
+.scard {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+.scard:hover { border-color: var(--clay); }
+.scard--today { border-color: var(--clay); background: var(--clay-tint); }
+.scard--cancelled { opacity: 0.58; }
+.scard--completed { border-left: 4px solid var(--sage); }
+
+/* วันที่และเวลาอยู่บรรทัดเดียวกันด้านบน อ่านต่อเนื่องกว่าบล็อกแนวตั้ง */
+.scard__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.scard__when {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--t-sm);
+  color: var(--mist);
+  font-variant-numeric: tabular-nums;
+}
+.scard--today .scard__when { color: var(--clay); font-weight: 500; }
+.scard__top .pchip { flex-shrink: 0; }
+
+.scard__name {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.scard__course { font-size: var(--t-sm); color: var(--mist); }
+.scard__name + .pchip { margin-top: var(--sp-2); }
+
+.scard__body { display: grid; gap: 2px; }
+.scard__line {
+  font-size: var(--t-sm);
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.scard__line span { color: var(--mist); }
+
+.scard__alerts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* ============================================================
+   ผู้ใช้งานและผู้ฝึกสอน
+   ============================================================ */
+
+.pcard--off { opacity: 0.6; }
+.pcard__avatar--trainer { background: var(--honey-tint); color: var(--honey); }
+
+/* ── รายการผู้ใช้งาน ───────────────────────────────────────── */
+/* ใช้แถวแทนการ์ด เพราะผู้ใช้งานมีข้อมูลน้อยและมักมีจำนวนมาก
+   แถวทำให้กวาดสายตาหาอีเมลได้เร็วกว่า */
+.ulist {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.urow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  transition: background-color 0.15s;
+}
+.urow:last-child { border-bottom: none; }
+.urow:hover { background: var(--cream); }
+.urow--off { opacity: 0.55; }
+
+.urow__av {
+  width: 38px; height: 38px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  border-radius: var(--r-pill);
+  font-family: var(--font-head);
+  font-weight: 500;
+  background: var(--cream);
+  color: var(--mist);
+}
+.urow__av--admin   { background: var(--clay-tint); color: var(--clay); }
+.urow__av--trainer { background: var(--honey-tint); color: var(--honey); }
+.urow__av--parent  { background: var(--sage-tint); color: var(--sage); }
+
+.urow__main { flex: 1; min-width: 0; }
+.urow__name {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+.urow__mail {
+  display: block;
+  font-size: var(--t-xs);
+  color: var(--mist);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.urow__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+.pchip--admin   { background: var(--clay-tint); color: var(--clay); }
+.pchip--trainer { background: var(--honey-tint); color: var(--honey); }
+.pchip--parent  { background: var(--sage-tint); color: var(--sage); }
+
+@media (max-width: 768px) {
+  .urow { flex-wrap: wrap; }
+  .urow__tags { width: 100%; justify-content: flex-start; padding-left: 50px; }
+}
+
+/* ── มุมมองรายการแบบคอลัมน์ ────────────────────────────────── */
+/* จอแคบเรียงซ้อนในคอลัมน์เดียว จอกว้างกางออกเป็นสี่คอลัมน์
+   เพื่อไม่ให้เหลือพื้นที่ว่างด้านขวาโดยเปล่าประโยชน์ */
+.acard__col { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.acard__k { font-size: var(--t-xs); color: var(--mist); }
+.acard__v {
+  font-size: var(--t-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acard__foot {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--line-soft);
+}
+
+/* จอแคบ: เวลาอยู่ซ้ายสุดคร่อมทุกแถว เนื้อหาเรียงลงมาในคอลัมน์กลาง
+   ป้ายสถานะเกาะมุมขวาบน ไม่ยืดเต็มแถว */
+@media (max-width: 899px) {
+  .acard__time { grid-row: 1 / span 3; }
+  .acard__col  { grid-column: 2; }
+  .acard > .pchip { grid-column: 3; grid-row: 1; justify-self: end; }
+
+  /* ป้ายกำกับกินความสูงจนเห็นได้ไม่กี่รายการต่อหน้าจอ
+     ตัดออกแล้ววางค่ากับรายละเอียดไว้บรรทัดเดียวกันแทน */
+  .acard__k { display: none; }
+  .acard__col {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--sp-2);
+  }
+}
+
+@media (min-width: 900px) {
+  .acard {
+    grid-template-columns: 62px minmax(0, 1.5fr) minmax(0, 1.1fr) minmax(0, 1.1fr) auto;
+    align-items: center;
+    gap: var(--sp-4);
+  }
+  .acard__foot { padding-left: calc(62px + var(--sp-4)); }
+}
+
+/* ── ตัวเลือกแบบค้นหา ──────────────────────────────────────── */
+/* พอมีเด็กหลายสิบคน การเลื่อนหาใน dropdown ช้ากว่าการพิมพ์ชื่อมาก */
+.picker {
+  margin-top: var(--sp-2);
+  max-height: 210px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.picker__item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: left;
+  transition: background-color 0.12s;
+}
+.picker__item:last-child { border-bottom: none; }
+.picker__item:hover { background: var(--cream); }
+.picker__item.is-on { background: var(--clay-tint); }
+.picker__item.is-on .picker__name { font-weight: 600; color: var(--clay-dark); }
+
+.picker__name { font-size: var(--t-sm); font-weight: 500; flex-shrink: 0; }
+.picker__sub {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker__left { font-size: var(--t-xs); color: var(--mist); flex-shrink: 0; }
+.picker__none { padding: var(--sp-3); font-size: var(--t-sm); color: var(--mist); text-align: center; }
+
+/* รายการที่ถูกเลือกไว้ล่วงหน้า แสดงเป็นข้อความ ไม่ต้องให้เปลี่ยน */
+.picker__fixed {
+  padding: 10px 14px;
+  background: var(--cream);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  font-weight: 500;
+}
+
+/* แถวล่างของการ์ดคอร์ส วางข้อความกับปุ่มลงนัดคนละฝั่ง */
+.ecard__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.ecard__bottom .ecard__foot { flex: 1; min-width: 0; }
+
+
+
+/* ── หัวข้อกลุ่มในรายการเลือก ──────────────────────────────── */
+.picker__head {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--cream);
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--t-xs);
+  color: var(--mist);
+  font-weight: 500;
+}
+/* เหลือน้อยต้องเห็นก่อน เป็นกลุ่มที่ต้องรีบนัด */
+.picker__left--low { color: var(--coral); font-weight: 600; }
+
+/* ปุ่มแก้ไขในแถวประวัติ ไม่ให้ถูกบีบจนตัวหนังสือตกบรรทัด */
+.hrow .btn { flex-shrink: 0; }
+
+/* ── คำบอกว่ากำลังแก้ของใครหรือของอะไร ─────────────────────── */
+/* หัวข้อ "แก้ไขคอร์ส" อย่างเดียวไม่พอ ต้องรู้ว่าคอร์สไหน
+   ไม่งั้นถ้ากดผิดใบจะไม่รู้ตัวจนบันทึกไปแล้ว */
+.sheet__sub {
+  margin-top: calc(var(--sp-4) * -1 + 2px);
+  margin-bottom: var(--sp-4);
+  font-size: var(--t-sm);
+  color: var(--mist);
+}
+
+/* ป้ายบอกว่าเป็นคาบสอนกลุ่ม ไม่ใช่นัดเดี่ยว */
+.pchip--slot {
+  align-self: flex-start;
+  margin-top: 2px;
+  background: var(--sage-tint);
+  color: var(--sage);
+}
+
+/* รายชื่อเด็กในการ์ดคาบสอน ต้องมีหัวข้อกำกับ ไม่งั้นไม่รู้ว่าป้ายพวกนี้คืออะไร */
+.scard__kids {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-1);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+.scard__kidsLabel {
+  width: 100%;
+  font-size: var(--t-xs);
+  color: var(--mist);
+  margin-bottom: 2px;
+}
+
+/* ── โครงร่างระหว่างโหลด ───────────────────────────────────── */
+.skel { display: flex; flex-direction: column; gap: var(--sp-3); }
+.skel__row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.skel__lines { flex: 1; display: flex; flex-direction: column; gap: var(--sp-2); }
+.skel__bar {
+  display: block;
+  height: 11px;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--line-soft) 25%, var(--line) 50%, var(--line-soft) 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.3s linear infinite;
+}
+.skel__bar--sm { width: 44px; height: 34px; border-radius: var(--r-md); flex-shrink: 0; }
+.skel__bar--lg { width: 45%; }
+.skel__bar--md { width: 70%; height: 9px; opacity: 0.7; }
+@keyframes shimmer {
+  from { background-position: -300px 0; }
+  to   { background-position:  300px 0; }
+}
+
+/* ── วันที่บนการ์ด เน้นตัวเลขวันให้เห็นก่อน ─────────────────── */
+.scard__daybox {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 10px;
+  background: var(--cream);
+  border-radius: var(--r-pill);
+}
+.scard--today .scard__daybox { background: var(--clay); color: #fff; }
+.scard__dow { font-size: var(--t-xs); opacity: 0.8; }
+.scard__day { font-family: var(--font-head); font-size: var(--t-base); font-weight: 600; }
+.scard__hours { font-size: var(--t-sm); color: var(--mist); font-variant-numeric: tabular-nums; }
+.scard--today .scard__hours { color: var(--clay); }
+
+/* ผู้ปกครองอยู่กลุ่มเดียวกับเด็ก ไม่ปนกับผู้ฝึกสอนและสถานที่ */
+.scard__parent {
+  width: 100%;
+  margin-top: var(--sp-2);
+  font-size: var(--t-sm);
+}
+.scard__parent::first-line { color: inherit; }
+
+/* ป้ายผู้ใช้เป็นทางเข้าเดียวของกล่องบัญชี ต้องกดได้และเต็มความกว้างของแถบ
+   ความกว้างใช้ 100% เฉย ๆ เพราะ .rail__foot มี padding คุมระยะขอบอยู่แล้ว
+   ถ้าหักลบ padding อีกชั้นจะแคบเกินและเยื้องไปข้างเดียว */
+button.rail__user {
+  width: 100%;
+  margin: 0;
+  gap: var(--sp-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+button.rail__user:hover { background: var(--clay-tint); }
+.rail__more {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--mist);
+  line-height: 0;
+}
+.rail__more svg { width: 16px; height: 16px; }
+button.rail__user:hover .rail__more { color: var(--clay); }
+
+/* ============================================================
+   Phase 5 — บันทึกกิจกรรม
+   ============================================================ */
+
+/* รายการรอบันทึกใช้โครงเดียวกับตารางนัด แต่กดแล้วเปิดฟอร์มบันทึก */
+.acard--log { cursor: pointer; }
+
+/* ── ให้คะแนนความร่วมมือ ───────────────────────────────────── */
+.stars { display: flex; gap: var(--sp-1); }
+.star {
+  font-size: 1.7rem;
+  line-height: 1;
+  color: var(--line);
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+  transition: color 0.12s, transform 0.12s;
+}
+.star:hover { transform: scale(1.12); }
+.star.is-on { color: var(--honey); }
+
+/* ป้ายกำกับในแถบสรุปของผู้ดูแลระบบ ไม่ใช่ปุ่มกด */
+.chipbar span.chipbtn { cursor: default; }

@@ -45,6 +45,26 @@ function cellToValue(val) {
   return val;
 }
 
+// ── ซ่อมค่าที่ Google Sheets แปลงเป็นตัวเลขจนเลขศูนย์หน้าหาย ──
+// เบอร์โทรไทยขึ้นต้นด้วยศูนย์เสมอ แต่ถ้าเขียนลงชีตโดยไม่ตั้งรูปแบบเป็นข้อความ
+// ชีตจะมองว่าเป็นตัวเลขแล้วตัดศูนย์หน้าทิ้ง 0812345678 กลายเป็น 812345678
+function isTextyField(header) {
+  const h = String(header).toLowerCase();
+  return h.indexOf('phone') >= 0 || h === 'taxid';
+}
+
+function fixTexty(header, value) {
+  if (value === '' || value === null || value === undefined) return '';
+  if (typeof value !== 'number') return value;
+
+  let text = String(value);
+  if (String(header).toLowerCase() === 'taxid') {
+    while (text.length < 13) text = '0' + text;   // เลขผู้เสียภาษีมี 13 หลัก
+    return text;
+  }
+  return '0' + text;                              // เบอร์โทรไทยขึ้นต้นด้วยศูนย์
+}
+
 // ── สร้าง id ────────────────────────────────────────────────
 function newId() {
   return Utilities.getUuid().split('-')[0].toUpperCase();
@@ -64,7 +84,10 @@ function readAll(sheetName) {
     .filter(row => row.some(c => c !== '' && c !== null))
     .map(row => {
       const obj = {};
-      headers.forEach((h, i) => { obj[h] = cellToValue(row[i]); });
+      headers.forEach((h, i) => {
+        const val = cellToValue(row[i]);
+        obj[h] = isTextyField(h) ? fixTexty(h, val) : val;
+      });
       return obj;
     });
 }
@@ -87,6 +110,13 @@ function insertRow(sheetName, obj) {
 
   const row = headers.map(h => (record[h] === undefined || record[h] === null) ? '' : record[h]);
   sheet.appendRow(row);
+
+  // ตั้งรูปแบบเซลล์เบอร์โทรเป็นข้อความ กันชีตแปลงเป็นตัวเลขแล้วตัดศูนย์หน้า
+  const last = sheet.getLastRow();
+  headers.forEach((h, i) => {
+    if (isTextyField(h)) sheet.getRange(last, i + 1).setNumberFormat('@');
+  });
+
   return record;
 }
 
@@ -115,6 +145,10 @@ function updateRow(sheetName, obj) {
   const merged  = headers.map((h, i) => {
     if (h === 'updatedAt') return nowTH();
     return obj[h] !== undefined ? obj[h] : current[i];
+  });
+
+  headers.forEach((h, i) => {
+    if (isTextyField(h)) sheet.getRange(rowIndex, i + 1).setNumberFormat('@');
   });
 
   sheet.getRange(rowIndex, 1, 1, headers.length).setValues([merged]);

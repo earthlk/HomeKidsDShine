@@ -77,12 +77,46 @@ const ROUTES = {
 
   // Phase 2 — ผู้ปกครองและเด็ก
   getPeople:        { fn: (s)    => getPeople(s) },
-  saveParent:       { roles: [ROLE.ADMIN], fn: (s, p) => saveParent(s, p) },
-  saveChild:        { roles: [ROLE.ADMIN], fn: (s, p) => saveChild(s, p) },
+  // ผู้ปกครองแก้ข้อมูลของตัวเองและบุตรหลานได้ ตัวฟังก์ชันตรวจความเป็นเจ้าของเอง
+  saveParent:       { fn: (s, p) => saveParent(s, p) },
+  saveChild:        { fn: (s, p) => saveChild(s, p) },
   createFamily:     { roles: [ROLE.ADMIN], fn: (s, p) => createFamily(s, p) },
   removeParent:     { roles: [ROLE.ADMIN], fn: (s, p) => removeParent(s, p) },
   removeChild:      { roles: [ROLE.ADMIN], fn: (s, p) => removeChild(s, p) },
   getLinkableUsers: { roles: [ROLE.ADMIN], fn: (s)    => getLinkableUsers(s) },
+
+  // Phase 3 — คอร์สและการลงทะเบียน
+  getCourseBoard:       { fn: (s)    => getCourseBoard(s) },
+  saveCourse:           { roles: [ROLE.ADMIN], fn: (s, p) => saveCourse(s, p) },
+  toggleCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => toggleCourse(s, p) },
+  removeCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => removeCourse(s, p) },
+  saveEnrollment:       { roles: [ROLE.ADMIN], fn: (s, p) => saveEnrollment(s, p) },
+  closeEnrollment:      { roles: [ROLE.ADMIN], fn: (s, p) => closeEnrollment(s, p) },
+  removeEnrollment:     { roles: [ROLE.ADMIN], fn: (s, p) => removeEnrollment(s, p) },
+
+  // Phase 4 — ตารางนัด
+  getSchedule:     { fn: (s, p) => getSchedule(s, p) },
+  getScheduleMeta: { roles: [ROLE.ADMIN], fn: (s)    => getScheduleMeta(s) },
+  saveSession:     { roles: [ROLE.ADMIN], fn: (s, p) => saveSession(s, p) },
+  cancelSession:   { roles: [ROLE.ADMIN], fn: (s, p) => cancelSession(s, p) },
+  removeSession:   { roles: [ROLE.ADMIN], fn: (s, p) => removeSession(s, p) },
+
+  // Phase 5 — บันทึกกิจกรรม
+  getActivityBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s)    => getActivityBoard(s) },
+  saveActivity:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => saveActivity(s, p) },
+  removeActivity:   { roles: [ROLE.ADMIN],               fn: (s, p) => removeActivity(s, p) },
+
+  // ผู้ใช้งานและผู้ฝึกสอน
+  getUsers:        { roles: [ROLE.ADMIN], fn: (s)    => getUsers(s) },
+  saveUser:        { roles: [ROLE.ADMIN], fn: (s, p) => saveUser(s, p) },
+  toggleUser:      { roles: [ROLE.ADMIN], fn: (s, p) => toggleUser(s, p) },
+  unlinkAccount:   { roles: [ROLE.ADMIN], fn: (s, p) => unlinkAccount(s, p) },
+  getLinkTargets:  { roles: [ROLE.ADMIN], fn: (s)    => getLinkTargets(s) },
+
+  getTrainerBoard: { roles: [ROLE.ADMIN], fn: (s)    => getTrainerBoard(s) },
+  saveTrainer:     { roles: [ROLE.ADMIN], fn: (s, p) => saveTrainer(s, p) },
+  toggleTrainer:   { roles: [ROLE.ADMIN], fn: (s, p) => toggleTrainer(s, p) },
+  removeTrainer:   { roles: [ROLE.ADMIN], fn: (s, p) => removeTrainer(s, p) },
 };
 
 // ห่อ logout ให้รับ session แทน token

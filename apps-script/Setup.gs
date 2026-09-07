@@ -165,6 +165,71 @@ function migrateFromOldSheet() {
   Logger.log('════════════════════════════════════');
 }
 
+// ── เติมคอลัมน์ที่ขาด ───────────────────────────────────────
+// รันเมื่ออัปเดตโค้ดแล้ว checkSetup แจ้งว่าชีตขาดคอลัมน์
+// เพิ่มต่อท้ายเท่านั้น ไม่แตะคอลัมน์เดิม ข้อมูลที่มีอยู่จึงไม่เลื่อน
+function repairSheets() {
+  let added = 0;
+
+  Object.keys(SCHEMA).forEach(name => {
+    const sheet = getSS().getSheetByName(name);
+    if (!sheet) { Logger.log('ไม่มีชีต ' + name + ' — รัน createNewSpreadsheet ก่อน'); return; }
+
+    const lastCol = sheet.getLastColumn();
+    const headers = lastCol
+      ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h).trim())
+      : [];
+
+    const missing = SCHEMA[name].filter(h => headers.indexOf(h) === -1);
+    if (!missing.length) return;
+
+    missing.forEach((h, i) => {
+      sheet.getRange(1, lastCol + i + 1)
+        .setValue(h)
+        .setFontWeight('bold')
+        .setFontColor('#FFFFFF')
+        .setBackground('#A96246');
+    });
+
+    added += missing.length;
+    Logger.log('เพิ่มใน ' + name + ': ' + missing.join(', '));
+  });
+
+  Logger.log(added ? 'เพิ่มคอลัมน์ทั้งหมด ' + added + ' คอลัมน์' : 'คอลัมน์ครบอยู่แล้ว');
+}
+
+// ── ซ่อมเบอร์โทรที่ศูนย์หน้าหายไปแล้ว ───────────────────────
+// รันครั้งเดียวหลังอัปเดตโค้ด แก้ทั้งรูปแบบคอลัมน์และค่าที่เสียไปแล้ว
+function repairPhoneNumbers() {
+  let fixed = 0;
+
+  Object.keys(SCHEMA).forEach(name => {
+    const sheet = getSS().getSheetByName(name);
+    if (!sheet || sheet.getLastRow() < 2) return;
+
+    const headers = SCHEMA[name];
+    headers.forEach((h, i) => {
+      if (!isTextyField(h)) return;
+
+      const col   = i + 1;
+      const range = sheet.getRange(2, col, sheet.getLastRow() - 1, 1);
+      const vals  = range.getValues();
+      let touched = false;
+
+      const out = vals.map(r => {
+        const v = r[0];
+        if (typeof v === 'number' && v !== '') { touched = true; fixed++; return [fixTexty(h, v)]; }
+        return [v === null || v === undefined ? '' : String(v)];
+      });
+
+      range.setNumberFormat('@');      // ตั้งรูปแบบทั้งคอลัมน์ กันเสียซ้ำ
+      if (touched) range.setValues(out);
+    });
+  });
+
+  Logger.log(fixed ? 'ซ่อมเบอร์และเลขภาษี ' + fixed + ' ช่อง' : 'ไม่มีค่าที่ต้องซ่อม');
+}
+
 // ── ตรวจว่าติดตั้งครบหรือยัง ────────────────────────────────
 function checkSetup() {
   Logger.log('SPREADSHEET_ID = ' + SPREADSHEET_ID);

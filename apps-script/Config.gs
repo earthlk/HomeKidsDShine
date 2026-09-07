@@ -67,6 +67,9 @@ const SCHEMA = {
     'id', 'childId', 'courseId', 'totalSessions',
     'startDate', 'expireDate', 'status', 'notes',
     'createdAt', 'updatedAt',
+    // ราคาที่ตกลงกันจริงของรายการนี้ อาจต่างจากราคาตั้งของคอร์ส
+    // เช่น ลดให้พี่น้อง หรือซื้อจำนวนครั้งไม่เท่าแพ็กเกจมาตรฐาน
+    'price',
   ],
   [SHEET.SESSIONS]: [
     'id', 'enrollmentId', 'trainerId', 'date', 'startTime', 'endTime',

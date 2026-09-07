@@ -11,7 +11,7 @@ function getPeople(sess) {
   const children = readAll(SHEET.CHILDREN);
 
   if (sess.role === ROLE.ADMIN) {
-    return { parents, children, canEdit: true };
+    return { parents, children, canEdit: true, canManage: true };
   }
 
   // ผู้ฝึกสอนต้องเห็นข้อมูลเด็กเพื่อความปลอดภัยระหว่างฝึก
@@ -25,19 +25,39 @@ function getPeople(sess) {
       })),
       children,
       canEdit: false,
+      canManage: false,
     };
   }
 
   // ผู้ปกครองเห็นเฉพาะข้อมูลตัวเองและบุตรหลานในสังกัด
+  // แก้ไขได้ แต่เพิ่มหรือลบไม่ได้ เพราะกระทบการลงทะเบียนและการเงิน
   const mine       = parents.filter(p => String(p.userId) === String(sess.userId));
   const myIds      = mine.map(p => String(p.id));
   const myChildren = children.filter(c => myIds.indexOf(String(c.parentId)) >= 0);
 
-  return { parents: mine, children: myChildren, canEdit: false };
+  return { parents: mine, children: myChildren, canEdit: true, canManage: false };
+}
+
+// ── รายการผู้ปกครองที่บัญชีนี้เป็นเจ้าของ ───────────────────
+function myParentIds(sess) {
+  return readAll(SHEET.PARENTS)
+    .filter(x => String(x.userId) === String(sess.userId))
+    .map(x => String(x.id));
 }
 
 // ── บันทึกผู้ปกครอง (สร้างใหม่หรือแก้ไข) ────────────────────
 function saveParent(sess, p) {
+  // ผู้ปกครองแก้ได้เฉพาะข้อมูลของตัวเอง และสร้างข้อมูลใหม่ไม่ได้
+  if (sess.role !== ROLE.ADMIN) {
+    if (sess.role !== ROLE.PARENT) throw new Error('บัญชีนี้ไม่มีสิทธิ์แก้ไขข้อมูลผู้ปกครอง');
+    if (!p.id) throw new Error('เพิ่มผู้ปกครองใหม่ได้เฉพาะผู้ดูแลระบบ');
+    if (myParentIds(sess).indexOf(String(p.id)) < 0) {
+      throw new Error('แก้ไขได้เฉพาะข้อมูลของตัวเอง');
+    }
+    // ห้ามย้ายข้อมูลไปผูกกับบัญชีอื่น
+    delete p.userId;
+  }
+
   const name = String(p.name || '').trim();
   if (!name) throw new Error('กรอกชื่อผู้ปกครองก่อน');
 
@@ -67,6 +87,21 @@ function saveParent(sess, p) {
 
 // ── บันทึกเด็ก (สร้างใหม่หรือแก้ไข) ─────────────────────────
 function saveChild(sess, p) {
+  // ผู้ปกครองแก้ได้เฉพาะบุตรหลานในสังกัดตัวเอง และย้ายไปผู้ปกครองอื่นไม่ได้
+  if (sess.role !== ROLE.ADMIN) {
+    if (sess.role !== ROLE.PARENT) throw new Error('บัญชีนี้ไม่มีสิทธิ์แก้ไขข้อมูลเด็ก');
+    if (!p.id) throw new Error('เพิ่มเด็กใหม่ได้เฉพาะผู้ดูแลระบบ');
+
+    const current = readOne(SHEET.CHILDREN, p.id);
+    if (!current) throw new Error('ไม่พบข้อมูลเด็ก');
+
+    const mine = myParentIds(sess);
+    if (mine.indexOf(String(current.parentId)) < 0) {
+      throw new Error('แก้ไขได้เฉพาะบุตรหลานในความดูแลของตัวเอง');
+    }
+    p.parentId = current.parentId;
+  }
+
   const name = String(p.name || '').trim();
   if (!name)      throw new Error('กรอกชื่อเด็กก่อน');
   if (!p.parentId) throw new Error('เลือกผู้ปกครองก่อน');
@@ -145,6 +180,7 @@ function createFamily(sess, p) {
 // ── ลบผู้ปกครอง ─────────────────────────────────────────────
 // ลบได้เฉพาะเมื่อไม่มีเด็กในสังกัด ไม่งั้นข้อมูลเด็กจะกำพร้า
 function removeParent(sess, p) {
+  if (sess.role !== ROLE.ADMIN) throw new Error('ลบได้เฉพาะผู้ดูแลระบบ');
   const kids = readAll(SHEET.CHILDREN)
     .filter(c => String(c.parentId) === String(p.id));
 
@@ -161,6 +197,7 @@ function removeParent(sess, p) {
 // ── ลบเด็ก ──────────────────────────────────────────────────
 // ลบได้เฉพาะเมื่อยังไม่เคยลงทะเบียนคอร์ส เพราะประวัติการฝึกต้องคงอยู่
 function removeChild(sess, p) {
+  if (sess.role !== ROLE.ADMIN) throw new Error('ลบได้เฉพาะผู้ดูแลระบบ');
   const enrolls = readAll(SHEET.ENROLLMENTS)
     .filter(e => String(e.childId) === String(p.id));
 

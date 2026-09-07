@@ -23,6 +23,35 @@ const UI = {
     this._toastTimer = setTimeout(() => { el.hidden = true; }, 3200);
   },
 
+  // ── สั่งงานที่ใช้เวลา พร้อมกันการกดซ้ำ ────────────────────
+  // การเรียกหลังบ้านผ่าน Apps Script ใช้เวลาราวหนึ่งถึงสามวินาที
+  // ถ้าปุ่มยังกดได้อยู่ ผู้ใช้จะกดซ้ำแล้วได้ข้อมูลซ้ำสองแถว
+  _busy: false,
+
+  async run(btn, busyLabel, fn) {
+    if (this._busy) return;          // มีงานค้างอยู่ ไม่รับคำสั่งใหม่
+    this._busy = true;
+
+    const original = btn ? btn.innerHTML : '';
+    // ปิดทุกปุ่มในแถวเดียวกัน ไม่ใช่แค่ปุ่มที่กด
+    // ไม่งั้นผู้ใช้กดยกเลิกระหว่างบันทึกได้ แล้วกล่องปิดทั้งที่งานยังไม่เสร็จ
+    const group = btn && btn.parentElement
+      ? Array.prototype.slice.call(btn.parentElement.querySelectorAll('button'))
+      : [];
+
+    group.forEach(b => { b.disabled = true; });
+    if (btn) btn.innerHTML = '<span class="btn__spin"></span>' + this.esc(busyLabel);
+
+    try {
+      await fn();
+    } finally {
+      this._busy = false;
+      // ปุ่มอาจถูกลบไปแล้วถ้างานสำเร็จและกล่องปิดตัว
+      group.forEach(b => { if (document.body.contains(b)) b.disabled = false; });
+      if (btn && document.body.contains(btn)) btn.innerHTML = original;
+    }
+  },
+
   // ── กล่องซ้อน ─────────────────────────────────────────────
   openSheet(html) {
     this.closeSheet();
@@ -53,6 +82,23 @@ const UI = {
   loading(text = 'กำลังโหลด') {
     return '<div class="loading"><div class="spinner"></div>' +
            '<p style="color:var(--mist);font-size:var(--t-sm)">' + text + '</p></div>';
+  },
+
+  // ── โครงร่างระหว่างโหลด ───────────────────────────────────
+  // ใช้แทนตัวหมุนตอนโหลดซ้ำในหน้าเดิม เพราะเห็นรูปร่างของสิ่งที่กำลังจะมา
+  // ทำให้รู้สึกเร็วกว่าและหน้าไม่กระโดดตอนข้อมูลมาถึง
+  skeleton(rows = 3) {
+    let out = '<div class="skel">';
+    for (let i = 0; i < rows; i++) {
+      out += `<div class="skel__row">
+        <span class="skel__bar skel__bar--sm"></span>
+        <span class="skel__lines">
+          <span class="skel__bar skel__bar--lg"></span>
+          <span class="skel__bar skel__bar--md"></span>
+        </span>
+      </div>`;
+    }
+    return out + '</div>';
   },
 
   // ── สถานะว่าง ─────────────────────────────────────────────
@@ -108,8 +154,11 @@ const ICON = {
   wallet:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="17" cy="14.5" r="1.2" fill="currentColor" stroke="none"/></svg>',
   people:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 5.5a3 3 0 010 5.6M17.5 20a6.4 6.4 0 00-2-4.6"/></svg>',
   receipt:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg>',
+  whistle:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6.5" r="3.4"/><path d="M2.5 20.5a6.5 6.5 0 0113 0"/><path d="M17 4.5h5M19.5 2v5"/><path d="M15.5 14.5h6a1 1 0 011 1v1.5a3.5 3.5 0 01-3.5 3.5h-1"/></svg>',
   gear:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1v.2a2 2 0 11-4 0v-.1a1.6 1.6 0 00-2.7-1.2l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003.6 15a2 2 0 110-4 1.6 1.6 0 001.1-2.7l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 0010.2 4a2 2 0 114 0 1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7 2 2 0 110 4z"/></svg>',
   shield:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.4 9.2-8 11-4.6-1.8-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg>',
+  refresh:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 12a8.5 8.5 0 11-2.5-6"/><path d="M20.5 4v5h-5"/></svg>',
+  chevron:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   exit:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 012 2v12a2 2 0 01-2 2h-3"/><path d="M10 17l-5-5 5-5M5 12h11"/></svg>',
   eye:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="2.8"/></svg>',
   eyeOff:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.6 6.1A9.9 9.9 0 0112 6c6.4 0 10 6 10 6a17 17 0 01-3.3 3.9M6.5 7.8A17 17 0 002 12s3.6 6.5 10 6.5c1.6 0 3-.3 4.3-.8"/><path d="M10.1 10.1a2.8 2.8 0 003.9 3.9M3 3l18 18"/></svg>',

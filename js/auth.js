@@ -81,26 +81,23 @@ const Auth = {
       return;
     }
 
-    btn.disabled = true;
-    btn.textContent = 'กำลังตรวจสอบ';
+    // UI.run ปิดปุ่มและแสดงตัวหมุนระหว่างรอ กันการกดซ้ำระหว่างที่ยังไม่ตอบ
+    await UI.run(btn, 'กำลังตรวจสอบ', async () => {
+      // เข้าสู่ระบบส่ง email/password ที่ระดับบนสุด ไม่ได้อยู่ใน payload
+      // จึงเรียกผ่าน _postLogin แทน API.call ที่ต้องมี token
+      const out = await Auth._postLogin(email, password);
 
-    // เข้าสู่ระบบส่ง email/password ที่ระดับบนสุด ไม่ได้อยู่ใน payload
-    // จึงเรียกผ่าน _postLogin แทน API.call ที่ต้องมี token
-    const out = await this._postLogin(email, password);
+      if (!out.ok) { Auth.showError(out.message); return; }
 
-    btn.disabled = false;
-    btn.textContent = 'เข้าสู่ระบบ';
+      Store.set({
+        token:  out.data.token,
+        role:   out.data.role,
+        name:   out.data.name,
+        userId: out.data.userId,
+      });
 
-    if (!out.ok) { this.showError(out.message); return; }
-
-    Store.set({
-      token:  out.data.token,
-      role:   out.data.role,
-      name:   out.data.name,
-      userId: out.data.userId,
+      App.start();
     });
-
-    App.start();
   },
 
   // ยิงคำขอเข้าสู่ระบบโดยตรง เพราะโครงสร้าง body ต่างจาก action อื่น

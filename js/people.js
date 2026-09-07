@@ -5,7 +5,7 @@
 
 const People = {
 
-  data:  { parents: [], children: [], canEdit: false },
+  data:  { parents: [], children: [], canEdit: false, canManage: false },
   tab:   'children',   // เปิดที่แท็บเด็กก่อน เพราะเป็นข้อมูลที่ดูบ่อยที่สุด
   query: '',
 
@@ -25,19 +25,23 @@ const People = {
 
   paint(el) {
     const d   = this.data;
-    const add = d.canEdit ? `
+    const add = d.canManage ? `
       <div class="toolbar__actions">
         <button class="btn btn--ghost" data-act="new-parent">เพิ่มผู้ปกครอง</button>
         <button class="btn btn--primary" data-act="new-family">เพิ่มเด็ก</button>
       </div>` : '';
 
-    el.innerHTML = `
+    // ผู้ปกครองเห็นเฉพาะครอบครัวตัวเอง ไม่กี่รายการ ไม่ต้องมีช่องค้นหา
+    const search = d.canManage ? `
       <div class="toolbar">
         <input class="field__input toolbar__search" id="peopleSearch"
           type="search" placeholder="ค้นหาจากชื่อ ชื่อเล่น หรือเบอร์โทร"
           value="${UI.esc(this.query)}">
         ${add}
-      </div>
+      </div>` : '';
+
+    el.innerHTML = `
+      ${search}
 
       <div class="segbar" role="tablist">
         <button class="segbar__btn${this.tab === 'children' ? ' is-on' : ''}"
@@ -52,7 +56,8 @@ const People = {
 
       <div id="peopleList"></div>`;
 
-    el.querySelector('#peopleSearch').addEventListener('input', e => {
+    const box = el.querySelector('#peopleSearch');
+    if (box) box.addEventListener('input', e => {
       People.query = e.target.value;
       People.paintList();
     });
@@ -227,7 +232,7 @@ const People = {
       </div>` : ''}
 
       <div class="sheet__actions">
-        ${edit ? `<button class="btn btn--danger" data-act="del">ลบ</button>` : ''}
+        ${this.data.canManage ? `<button class="btn btn--danger" data-act="del">ลบ</button>` : ''}
         <button class="btn btn--ghost" data-act="close">ปิด</button>
         ${edit ? `<button class="btn btn--primary" data-act="edit">แก้ไข</button>` : ''}
       </div>`);
@@ -281,7 +286,7 @@ const People = {
       </div>` : ''}
 
       <div class="sheet__actions">
-        ${edit ? `<button class="btn btn--danger" data-act="del">ลบ</button>` : ''}
+        ${this.data.canManage ? `<button class="btn btn--danger" data-act="del">ลบ</button>` : ''}
         <button class="btn btn--ghost" data-act="close">ปิด</button>
         ${edit ? `<button class="btn btn--primary" data-act="edit">แก้ไข</button>` : ''}
       </div>`);
@@ -301,23 +306,13 @@ const People = {
   },
 
   // ── ฟอร์มผู้ปกครอง ────────────────────────────────────────
-  async openParentForm(p) {
+  // การผูกกับบัญชีเข้าใช้งานย้ายไปอยู่ที่หน้าผู้ใช้งาน
+  // เพราะลำดับงานจริงคือสร้างข้อมูลผู้ปกครองก่อน แล้วค่อยเปิดบัญชีให้
+  openParentForm(p) {
     p = p || {};
-    UI.openSheet(UI.loading());
-
-    // รายชื่อบัญชีผู้ใช้สิทธิ์ผู้ปกครอง เพื่อผูกกับข้อมูลนี้
-    const res   = await API.cached('getLinkableUsers');
-    const users = res.ok ? res.data : [];
-
-    const options = users.map(u => {
-      const taken = u.linkedTo && String(u.linkedTo) !== String(p.id || '');
-      return `<option value="${UI.esc(u.id)}"${String(p.userId) === String(u.id) ? ' selected' : ''}${taken ? ' disabled' : ''}>
-        ${UI.esc(u.name)} (${UI.esc(u.email)})${taken ? ' — ผูกกับคนอื่นแล้ว' : ''}
-      </option>`;
-    }).join('');
-
-    UI.fillSheet(`
+    UI.openSheet(`
       <div class="sheet__title">${p.id ? 'แก้ไขผู้ปกครอง' : 'เพิ่มผู้ปกครอง'}</div>
+      ${p.id ? `<p class="sheet__sub">${UI.esc(p.name)}</p>` : ''}
 
       ${this.fgroup('ข้อมูลทั่วไป')}
       <div class="frow">
@@ -345,19 +340,9 @@ const People = {
         ${this.finput('f_taxId', 'เลขผู้เสียภาษี', p.taxId, '13 หลัก')}
       </div>
 
-      ${this.fgroup('บัญชีเข้าใช้งาน')}
-      <div class="field">
-        <label class="field__label" for="f_userId">ผูกกับบัญชีผู้ใช้</label>
-        <select class="field__input" id="f_userId">
-          <option value="">ยังไม่ผูก</option>
-          ${options}
-        </select>
-        <p class="fhint">ผูกแล้วผู้ปกครองจะเห็นตารางเรียนและคอร์สของบุตรหลานเมื่อเข้าสู่ระบบ</p>
-      </div>
-
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
-        <button class="btn btn--primary" data-act="save">บันทึก</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
       </div>`);
 
     this.bindSheet({
@@ -378,7 +363,6 @@ const People = {
       address:     this.val('f_address'),
       receiptName: this.val('f_receiptName'),
       taxId:       this.val('f_taxId'),
-      userId:      this.val('f_userId'),
     };
 
     if (!payload.name) { UI.toast('กรอกชื่อผู้ปกครองก่อน', 'error'); return; }
@@ -396,10 +380,11 @@ const People = {
     c = c || {};
     UI.openSheet(`
       <div class="sheet__title">${c.id ? 'แก้ไขข้อมูลเด็ก' : 'เพิ่มเด็ก'}</div>
+      ${c.id ? `<p class="sheet__sub">${UI.esc(c.name)}${c.nickname ? ' · ' + UI.esc(c.nickname) : ''}</p>` : ''}
       ${this.childFields(c)}
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
-        <button class="btn btn--primary" data-act="save">บันทึก</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
       </div>`);
 
     this.bindSheet({
@@ -454,7 +439,7 @@ const People = {
 
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
-        <button class="btn btn--primary" data-act="save">บันทึก</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
       </div>`);
 
     // ช่องเลือกผู้ปกครองในส่วนข้อมูลเด็กไม่ต้องใช้ เพราะเลือกไว้ข้างบนแล้ว
@@ -509,7 +494,7 @@ const People = {
       <p>ลบ <strong>${UI.esc(label)}</strong> ออกจากระบบ การลบย้อนกลับไม่ได้</p>
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
-        <button class="btn btn--danger" data-act="go">ลบ${word}</button>
+        <button class="btn btn--danger" data-act="go" data-busy="กำลังลบ">ลบ${word}</button>
       </div>`);
 
     this.bindSheet({
@@ -538,9 +523,11 @@ const People = {
       ${this.fgroup('ข้อมูลเด็ก')}
       <div class="field" id="c_parentWrap">
         <label class="field__label" for="c_parentId">ผู้ปกครอง</label>
-        <select class="field__input" id="c_parentId">
+        <select class="field__input" id="c_parentId"${this.data.canManage ? '' : ' disabled'}>
           <option value="">เลือกผู้ปกครอง</option>${parentOpts}
         </select>
+        ${this.data.canManage ? '' :
+          '<p class="fhint">ย้ายผู้ปกครองได้เฉพาะผู้ดูแลศูนย์</p>'}
       </div>
       <div class="frow">
         ${this.finput('c_name', 'ชื่อและนามสกุล', c.name, 'ชื่อจริง นามสกุล')}
@@ -629,10 +616,16 @@ const People = {
 
   // ผูกปุ่มในกล่องซ้อนด้วย data-act เพื่อไม่ต้องใส่ชื่อลงใน onclick
   // ชื่อคนไทยมีอะพอสทรอฟีได้ ถ้าฝังลง onclick จะทำ HTML พัง
+  //
+  // ปุ่มที่มี data-busy จะถูกปิดและแสดงตัวหมุนระหว่างรอหลังบ้านตอบ
+  // ปุ่มที่ทำงานทันที เช่น ปิดหรือแก้ไข ไม่ต้องใส่
   bindSheet(handlers) {
     document.querySelectorAll('#sheet [data-act]').forEach(b => {
       const fn = handlers[b.dataset.act];
-      if (fn) b.onclick = fn;
+      if (!fn) return;
+      b.onclick = b.dataset.busy
+        ? () => UI.run(b, b.dataset.busy, fn)
+        : fn;
     });
   },
 
@@ -734,10 +727,9 @@ const People = {
     return y > 0 ? y + ' ปี ' + m + ' เดือน' : m + ' เดือน';
   },
 
-  // โหลดใหม่หลังแก้ไขข้อมูล ต้องล้าง cache ก่อนไม่งั้นได้ของเดิม
+  // โหลดใหม่หลังแก้ไขข้อมูล ต้องล้างที่เก็บไว้ก่อนไม่งั้นได้ของเดิม
   async reload() {
-    API.clearCache('getPeople');
-    API.clearCache('getLinkableUsers');
+    App.invalidate();
     await this.render(document.getElementById('page'));
   },
 };
