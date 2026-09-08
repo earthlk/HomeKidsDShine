@@ -65,7 +65,7 @@ a { color: var(--clay); }
 
 .signin__inner { width: 100%; max-width: 360px; }
 
-.signin__mark { margin-bottom: var(--sp-4); }
+.signin__mark { margin-bottom: -20px; margin-left: 22px; }
 
 .signin__title {
   font-family: var(--font-head);
