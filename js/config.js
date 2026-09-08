@@ -9,7 +9,7 @@ const CONFIG = {
   GAS_URL: 'https://script.google.com/macros/s/AKfycby6VlRSq83TK8wVgT6xrsT6cW90VN1kE6cOkaCWllONhgz1TztEkpnwJ5-0Ssnlm1bA/exec',
 
   // ที่อยู่ของหน้าเว็บนี้ ใช้ตอนเปิด OAuth ใน Phase หลัง
-  SITE_URL: 'https://earthlk.github.io/HomeyKids/',
+  SITE_URL: 'https://earthlk.github.io/HomeKidsDShine/',
 
   // คีย์เก็บข้อมูลใน sessionStorage
   STORE_KEY: 'hk.session',

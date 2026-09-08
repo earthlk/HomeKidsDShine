@@ -26,7 +26,11 @@ const Courses = {
     const d = this.data;
 
     // ผู้ปกครองเห็นเฉพาะคอร์สของบุตรหลาน ไม่ต้องมีแท็บให้สลับ
-    const tabs = (d.canEdit || d.courses.length) ? `
+    // ผู้ฝึกสอนเห็นแค่ภาพรวมคอร์ส หลังบ้านไม่ส่งรายการลงทะเบียนรายคนมา
+    // จึงไม่ต้องมีแท็บให้สลับ เพราะอีกแท็บจะว่างเปล่าเสมอ
+    if (d.mode === 'trainer') this.tab = 'catalog';
+
+    const tabs = d.canEdit ? `
       <div class="segbar" role="tablist">
         <button class="segbar__btn${this.tab === 'enrollments' ? ' is-on' : ''}"
           data-tab="enrollments" role="tab">
@@ -265,13 +269,15 @@ const Courses = {
     const money = this.data.canEdit;
 
     box.innerHTML = '<div class="pgrid">' + rows.map(c => `
-      <article class="ccard ${c.active ? '' : 'ccard--off'}">
+      <article class="ccard ${c.active ? '' : 'ccard--off'}${money ? '' : ' ccard--tap'}"
+        ${money ? '' : `data-detail="${UI.esc(c.id)}"`}>
         <div class="ecard__head">
           <div>
             <h3 class="ecard__child">${UI.esc(c.name)}</h3>
             <p class="ecard__course">${UI.esc(c.category || 'ไม่ระบุหมวด')}</p>
           </div>
           ${c.active ? '' : '<span class="pchip pchip--muted">ปิดการขาย</span>'}
+          ${!money && c.teaching ? '<span class="pchip pchip--ok">สอนอยู่</span>' : ''}
         </div>
 
         ${c.description ? `<p class="ccard__desc">${UI.esc(c.description)}</p>` : ''}
@@ -296,12 +302,16 @@ const Courses = {
             </div>`
           : `
             <div class="tally__item">
-              <span class="tally__num tally__num--done">${c.activeCount || 0}</span>
-              <span class="tally__label">กำลังเรียน</span>
+              <span class="tally__num tally__num--done">${c.myDone || 0}</span>
+              <span class="tally__label">สอนแล้ว</span>
+            </div>
+            <div class="tally__item">
+              <span class="tally__num tally__num--booked">${c.myUpcoming || 0}</span>
+              <span class="tally__label">นัดหน้า</span>
             </div>
             <div class="tally__item">
               <span class="tally__num tally__num--muted">${c.enrolled || 0}</span>
-              <span class="tally__label">ทั้งหมด</span>
+              <span class="tally__label">เด็ก</span>
             </div>`}
         </div>
 
@@ -319,6 +329,14 @@ const Courses = {
           </div>` : ''}
       </article>`).join('') + '</div>';
 
+    box.querySelectorAll('[data-detail]').forEach(b => {
+      b.onclick = () => Courses.openCourseDetail(b.dataset.detail);
+    });
+
+    box.querySelectorAll('[data-detail]').forEach(b => {
+      b.onclick = () => Courses.openMyCourse(b.dataset.detail);
+    });
+
     box.querySelectorAll('[data-edit]').forEach(b => {
       b.onclick = () => Courses.openCourseForm(
         Courses.data.courses.find(c => String(c.id) === String(b.dataset.edit)));
@@ -332,6 +350,120 @@ const Courses = {
         Courses.reload();
       });
     });
+  },
+
+  // ── รายละเอียดคอร์สสำหรับผู้ฝึกสอน ────────────────────────
+  openCourseDetail(id) {
+    const c = this.data.courses.find(x => String(x.id) === String(id));
+    if (!c) return;
+
+    const kids = c.students || [];
+
+    UI.openSheet(`
+      <div class="sheet__title">${UI.esc(c.name)}</div>
+      <p class="sheet__sub">${UI.esc(c.category || 'ไม่ระบุหมวด')}</p>
+
+      ${c.description ? `<p class="dnote">${UI.esc(c.description)}</p>` : ''}
+
+      <div class="tally tally--wide">
+        <div class="tally__item">
+          <span class="tally__num">${c.totalSessions}</span>
+          <span class="tally__label">ครั้งต่อคอร์ส</span>
+        </div>
+        <div class="tally__item">
+          <span class="tally__num">${c.durationMin}</span>
+          <span class="tally__label">นาทีต่อครั้ง</span>
+        </div>
+        <div class="tally__item">
+          <span class="tally__num tally__num--done">${c.myDone || 0}</span>
+          <span class="tally__label">ฉันสอนไปแล้ว</span>
+        </div>
+        <div class="tally__item">
+          <span class="tally__num tally__num--booked">${c.myUpcoming || 0}</span>
+          <span class="tally__label">นัดข้างหน้า</span>
+        </div>
+      </div>
+
+      <div class="dsection">
+        <h3 class="dsection__title">
+          เด็กที่ฉันสอนในคอร์สนี้ ${kids.length} คน
+        </h3>
+        ${kids.length ? kids.map(k => `
+          <div class="drow2">
+            <span class="drow2__k">${UI.esc(k.name)}</span>
+            <span class="drow2__v">สอนแล้ว ${k.done} ครั้ง${k.upcoming ? ' · นัดอีก ' + k.upcoming : ''}</span>
+          </div>`).join('')
+        : `<p class="fhint">ยังไม่มีนัดในคอร์สนี้
+             ${c.enrolled ? ' แต่มีเด็กลงทะเบียนอยู่ ' + c.enrolled + ' คน' : ''}</p>`}
+      </div>
+
+      <div class="dsection">
+        <h3 class="dsection__title">ภาพรวมคอร์ส</h3>
+        <div class="drow2">
+          <span class="drow2__k">เด็กที่กำลังเรียน</span>
+          <span class="drow2__v">${c.enrolled || 0} คน (รวมของผู้ฝึกสอนคนอื่น)</span>
+        </div>
+        <div class="drow2">
+          <span class="drow2__k">สถานะคอร์ส</span>
+          <span class="drow2__v">${c.active ? 'เปิดรับลงทะเบียน' : 'ปิดการขายแล้ว'}</span>
+        </div>
+      </div>
+
+      <div class="sheet__actions">
+        <button class="btn btn--ghost" data-act="close">ปิด</button>
+      </div>`);
+
+    People.bindSheet({ close: () => UI.closeSheet() });
+  },
+
+  // ── รายละเอียดคอร์สสำหรับผู้ฝึกสอน ────────────────────────
+  async openMyCourse(id) {
+    UI.openSheet(UI.loading());
+
+    const res = await API.cached('getMyCourseDetail', { id });
+    if (!res.ok) { UI.closeSheet(); UI.toast(res.message, 'error'); return; }
+
+    const d = res.data;
+
+    const rows = d.kids.length ? d.kids.map(k => `
+      <div class="hrow">
+        <span class="pcard__avatar pcard__avatar--sm">${UI.esc(People.initial({ name: k.childName }))}</span>
+        <div class="hrow__main">
+          <p class="hrow__date">
+            ${UI.esc(k.childName)}
+            ${k.pending ? `<span class="pchip pchip--warn">รอบันทึก ${k.pending}</span>` : ''}
+          </p>
+          <p class="hrow__meta">
+            เราสอนไปแล้ว ${k.myDone} ครั้ง · คอร์สนี้เรียนไป ${k.done} จาก ${k.total} ครั้ง
+            ${k.remaining ? ' · เหลือ ' + k.remaining : ' · ครบแล้ว'}
+          </p>
+          ${k.nextDate
+            ? `<p class="hrow__meta">นัดถัดไป ${UI.thaiDate(k.nextDate, 'short')} ${UI.esc(k.nextTime)}</p>`
+            : '<p class="hrow__meta">ยังไม่มีนัดถัดไป</p>'}
+          ${k.alerts && k.alerts.length
+            ? `<p class="acard__alert">${UI.esc(k.alerts.join(' · '))}</p>` : ''}
+        </div>
+      </div>`).join('')
+      : UI.empty('ยังไม่มีเด็กในคอร์สนี้', 'เมื่อได้รับมอบหมายให้สอนคอร์สนี้ รายชื่อจะขึ้นที่นี่');
+
+    UI.openSheet(`
+      <div class="sheet__title">${UI.esc(d.name)}</div>
+      <p class="sheet__sub">
+        ${UI.esc(d.category || 'ไม่ระบุหมวด')} · ${d.totalSessions} ครั้ง · ครั้งละ ${d.durationMin} นาที
+      </p>
+
+      ${d.description ? `<p class="dnote">${UI.esc(d.description)}</p>` : ''}
+
+      <div class="dsection">
+        <h3 class="dsection__title">เด็กที่เราสอนในคอร์สนี้ ${d.kids.length} คน</h3>
+        ${rows}
+      </div>
+
+      <div class="sheet__actions">
+        <button class="btn btn--ghost" data-act="close">ปิด</button>
+      </div>`);
+
+    People.bindSheet({ close: () => UI.closeSheet() });
   },
 
   // ── ประวัติการฝึก ─────────────────────────────────────────
@@ -350,8 +482,14 @@ const Courses = {
           <p class="hrow__date">
             ${UI.thaiDate(s.date, 'short')}${s.startTime ? ' · ' + UI.esc(s.startTime) : ''}
             ${s.trainerName ? ' · ' + UI.esc(s.trainerName) : ''}
+            ${s.rating ? '<span class="hrow__stars">' + '★'.repeat(Number(s.rating)) + '</span>' : ''}
           </p>
+
           ${s.summary ? `<p class="hrow__note">${UI.esc(s.summary)}</p>` : ''}
+          ${s.skills ? `<p class="hrow__meta">ทักษะที่ฝึก ${UI.esc(s.skills)}</p>` : ''}
+
+          ${s.note ? `<p class="hrow__own">${UI.esc(s.note)}</p>` : ''}
+          ${s.nextGoal ? `<p class="hrow__meta">ครั้งหน้า ${UI.esc(s.nextGoal)}</p>` : ''}
           ${s.cancelReason ? `<p class="hrow__note">ยกเลิก: ${UI.esc(s.cancelReason)}</p>` : ''}
         </div>
         ${this.sessionChip(s.status)}

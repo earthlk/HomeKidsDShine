@@ -6,7 +6,7 @@
 // ── Spreadsheet ─────────────────────────────────────────────
 // ⚠️ หลังรัน createNewSpreadsheet() ใน Setup.gs แล้ว
 //    ให้เอา ID ที่ได้จาก Log มาใส่ตรงนี้
-const SPREADSHEET_ID = 'ใส่_ID_ชีตใหม่_ที่นี่';
+const SPREADSHEET_ID = 'https://script.google.com/macros/s/AKfycby6VlRSq83TK8wVgT6xrsT6cW90VN1kE6cOkaCWllONhgz1TztEkpnwJ5-0Ssnlm1bA/exec';
 
 // ID ชีตเก่า — ใช้ตอน migrate ข้อมูลเท่านั้น ไม่ได้ใช้ในระบบจริง
 const OLD_SPREADSHEET_ID = '17zBt9UHieSkprg28hZ7abTBKoV7mO9nzHHMz8UAJUV4';
@@ -77,8 +77,11 @@ const SCHEMA = {
     'createdAt', 'updatedAt',
   ],
   [SHEET.ACTIVITIES]: [
+    // summary, skills, nextGoal เป็นบันทึกของคาบ ทุกคนในคาบได้ค่าเดียวกัน
+    // rating กับ note เป็นผลรายคน เพราะเด็กแต่ละคนตอบสนองไม่เหมือนกัน
     'id', 'sessionId', 'trainerId', 'summary', 'skills', 'rating',
     'nextGoal', 'createdAt', 'updatedAt',
+    'note',
   ],
   [SHEET.PAYMENTS]: [
     'id', 'sessionId', 'trainerId', 'amount', 'status',

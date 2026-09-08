@@ -23,6 +23,27 @@ function getActivityBoard(sess) {
     }
   }
 
+  // ผู้ปกครองเห็นเฉพาะบันทึกของบุตรหลานตัวเอง และเห็นเฉพาะที่บันทึกแล้ว
+  // นัดที่ครูยังไม่บันทึกไม่ควรโผล่ เพราะยังไม่มีอะไรให้อ่าน
+  let myEnrollIds = null;
+  if (sess.role === ROLE.PARENT) {
+    const myParents = readAll(SHEET.PARENTS)
+      .filter(x => String(x.userId) === String(sess.userId))
+      .map(x => String(x.id));
+
+    if (!myParents.length) {
+      return { rows: [], byTrainer: [], canLog: false, needsProfile: true };
+    }
+
+    const myChildIds = readAll(SHEET.CHILDREN)
+      .filter(c => myParents.indexOf(String(c.parentId)) >= 0)
+      .map(c => String(c.id));
+
+    myEnrollIds = readAll(SHEET.ENROLLMENTS)
+      .filter(e => myChildIds.indexOf(String(e.childId)) >= 0)
+      .map(e => String(e.id));
+  }
+
   const enrollMap  = indexBy(readAll(SHEET.ENROLLMENTS), 'id');
   const childMap   = indexBy(readAll(SHEET.CHILDREN), 'id');
   const courseMap  = indexBy(readAll(SHEET.COURSES), 'id');
@@ -35,6 +56,12 @@ function getActivityBoard(sess) {
       // นัดที่ยังไม่ถึงวันบันทึกไม่ได้ เพราะยังไม่เกิดขึ้นจริง
       if (String(s.date) > today) return false;
       if (me && String(s.trainerId) !== String(me.id)) return false;
+
+      if (myEnrollIds) {
+        if (myEnrollIds.indexOf(String(s.enrollmentId)) < 0) return false;
+        if (s.status !== SESSION_STATUS.COMPLETED) return false;
+      }
+
       return true;
     })
     .map(s => {
@@ -56,10 +83,13 @@ function getActivityBoard(sess) {
         alerts:      childAlerts(child),
 
         logged:   !!act.id,
+        // บันทึกของคาบ เหมือนกันทุกคนในคาบเดียวกัน
         summary:  act.summary  || '',
         skills:   act.skills   || '',
-        rating:   act.rating   || '',
         nextGoal: act.nextGoal || '',
+        // ผลรายคน
+        rating:   act.rating   || '',
+        note:     act.note     || '',
         loggedAt: act.createdAt || '',
       };
     });
@@ -92,31 +122,41 @@ function getActivityBoard(sess) {
     byTrainer: byTrainer,
     canLog:    sess.role === ROLE.TRAINER || sess.role === ROLE.ADMIN,
     isAdmin:   sess.role === ROLE.ADMIN,
+    isParent:  sess.role === ROLE.PARENT,
+    isParent:  sess.role === ROLE.PARENT,
   };
 }
 
 // ── บันทึกกิจกรรม ───────────────────────────────────────────
-// รับได้หลายนัดพร้อมกัน เพราะคาบสอนกลุ่มมีเด็กหลายคนในคาบเดียว
-// ครูเขียนสรุปครั้งเดียวแล้วใช้กับทุกคนได้ ค่อยมาแก้รายคนทีหลัง
+// บันทึกของคาบเขียนครั้งเดียวใช้กับทุกคน ส่วนผลรายคนแยกกัน
+// เพราะเด็กที่เรียนคาบเดียวกันตอบสนองไม่เหมือนกัน
 function saveActivity(sess, p) {
-  const ids = [].concat(p.sessionIds || (p.sessionId ? [p.sessionId] : []));
-  if (!ids.length) throw new Error('ไม่พบนัดที่จะบันทึก');
+  const kids = [].concat(p.children || []);
+  if (!kids.length) throw new Error('ไม่พบนัดที่จะบันทึก');
 
   const summary = String(p.summary || '').trim();
-  if (!summary) throw new Error('เขียนสรุปสิ่งที่ฝึกก่อน');
+  if (!summary) throw new Error('เขียนสรุปการฝึกของคาบก่อน');
 
-  const rating = String(p.rating || '').trim();
-  if (rating && (Number(rating) < 1 || Number(rating) > 5)) {
-    throw new Error('คะแนนต้องอยู่ระหว่าง 1 ถึง 5');
-  }
+  const shared = {
+    summary:  summary,
+    skills:   String(p.skills || '').trim(),
+    nextGoal: String(p.nextGoal || '').trim(),
+  };
 
   const today    = todayTH();
   const existing = indexBy(readAll(SHEET.ACTIVITIES), 'sessionId');
   const trainers = readAll(SHEET.TRAINERS);
 
+  let me = null;
+  if (sess.role === ROLE.TRAINER) {
+    me = trainers.find(t => String(t.userId) === String(sess.userId));
+    if (!me) throw new Error('บัญชีนี้ยังไม่ได้ผูกกับข้อมูลผู้ฝึกสอน');
+  }
+
   let saved = 0;
 
-  ids.forEach(id => {
+  kids.forEach(kid => {
+    const id  = String(kid.sessionId || '');
     const row = readOne(SHEET.SESSIONS, id);
     if (!row) throw new Error('ไม่พบนัดหมาย');
 
@@ -126,25 +166,23 @@ function saveActivity(sess, p) {
     if (String(row.date) > today) {
       throw new Error('นัดวันที่ ' + row.date + ' ยังไม่ถึงกำหนด บันทึกล่วงหน้าไม่ได้');
     }
-
-    // ผู้ฝึกสอนบันทึกได้เฉพาะนัดของตัวเอง
-    if (sess.role === ROLE.TRAINER) {
-      const me = trainers.find(t => String(t.userId) === String(sess.userId));
-      if (!me || String(row.trainerId) !== String(me.id)) {
-        throw new Error('บันทึกได้เฉพาะนัดที่ตัวเองเป็นผู้สอน');
-      }
+    if (me && String(row.trainerId) !== String(me.id)) {
+      throw new Error('บันทึกได้เฉพาะนัดที่ตัวเองเป็นผู้สอน');
     }
 
-    const fields = {
-      sessionId: String(id),
-      trainerId: String(row.trainerId),
-      summary:   summary,
-      skills:    String(p.skills || '').trim(),
-      rating:    rating,
-      nextGoal:  String(p.nextGoal || '').trim(),
-    };
+    const rating = String(kid.rating || '').trim();
+    if (rating && (Number(rating) < 1 || Number(rating) > 5)) {
+      throw new Error('คะแนนต้องอยู่ระหว่าง 1 ถึง 5');
+    }
 
-    const old = existing[String(id)];
+    const fields = Object.assign({
+      sessionId: id,
+      trainerId: String(row.trainerId),
+      rating:    rating,
+      note:      String(kid.note || '').trim(),
+    }, shared);
+
+    const old = existing[id];
     if (old) updateRow(SHEET.ACTIVITIES, Object.assign({ id: old.id }, fields));
     else     insertRow(SHEET.ACTIVITIES, fields);
 
@@ -156,7 +194,7 @@ function saveActivity(sess, p) {
     saved++;
   });
 
-  audit(sess.userId, 'LOG_ACTIVITY', 'session', ids.join(','));
+  audit(sess.userId, 'LOG_ACTIVITY', 'session', kids.map(k => k.sessionId).join(','));
   return { count: saved };
 }
 

@@ -87,6 +87,7 @@ const ROUTES = {
 
   // Phase 3 — คอร์สและการลงทะเบียน
   getCourseBoard:       { fn: (s)    => getCourseBoard(s) },
+  getMyCourseDetail:    { roles: [ROLE.TRAINER], fn: (s, p) => getMyCourseDetail(s, p) },
   saveCourse:           { roles: [ROLE.ADMIN], fn: (s, p) => saveCourse(s, p) },
   toggleCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => toggleCourse(s, p) },
   removeCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => removeCourse(s, p) },
@@ -102,7 +103,7 @@ const ROUTES = {
   removeSession:   { roles: [ROLE.ADMIN], fn: (s, p) => removeSession(s, p) },
 
   // Phase 5 — บันทึกกิจกรรม
-  getActivityBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s)    => getActivityBoard(s) },
+  getActivityBoard: { fn: (s) => getActivityBoard(s) },   // ตัวฟังก์ชันกรองตามสิทธิ์เอง
   saveActivity:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => saveActivity(s, p) },
   removeActivity:   { roles: [ROLE.ADMIN],               fn: (s, p) => removeActivity(s, p) },
 

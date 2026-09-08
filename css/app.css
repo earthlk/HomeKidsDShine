@@ -1470,3 +1470,34 @@ button.rail__user:hover .rail__more { color: var(--clay); }
 
 /* ป้ายกำกับในแถบสรุปของผู้ดูแลระบบ ไม่ใช่ปุ่มกด */
 .chipbar span.chipbtn { cursor: default; }
+
+/* ── บันทึกผลรายคนในฟอร์ม ──────────────────────────────────── */
+.kidblock {
+  padding: var(--sp-3);
+  margin-bottom: var(--sp-3);
+  background: var(--cream);
+  border-radius: var(--r-md);
+}
+.kidblock__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+}
+.kidblock__name { flex: 1; min-width: 0; font-weight: 500; font-size: var(--t-sm); }
+.kidblock .stars { flex-shrink: 0; }
+.kidblock .star { font-size: 1.35rem; }
+.kidblock textarea { background: var(--card); }
+.kidblock .acard__alert { margin-bottom: var(--sp-2); }
+
+/* ── ประวัติการฝึกที่ผู้ปกครองเห็น ─────────────────────────── */
+/* ผลของบุตรหลานตัวเองต้องแยกออกจากบันทึกของคาบให้ชัด */
+.hrow__stars { color: var(--honey); margin-left: var(--sp-2); }
+.hrow__meta { font-size: var(--t-xs); color: var(--mist); line-height: 1.5; }
+.hrow__own {
+  margin-top: var(--sp-1);
+  padding-left: var(--sp-2);
+  border-left: 3px solid var(--sage-soft);
+  font-size: var(--t-sm);
+  line-height: 1.5;
+}

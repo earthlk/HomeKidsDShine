@@ -94,8 +94,13 @@ function getCourseBoard(sess) {
         notes:        s.notes || '',
         status:       s.status,
         trainerName:  trainer.name || '',
+        // บันทึกของคาบ ผู้ปกครองเห็นว่าคาบนั้นฝึกอะไร
         summary:      act.summary || '',
+        skills:       act.skills || '',
+        nextGoal:     act.nextGoal || '',
+        // ผลของบุตรหลานตัวเองในคาบนั้น
         rating:       act.rating || '',
+        note:         act.note || '',
         cancelReason: s.cancelReason || '',
         hasLog:       !!act.id,
       };
@@ -157,12 +162,29 @@ function getCourseBoard(sess) {
     const enrollCourse = {};
     enrollments.forEach(e => { enrollCourse[String(e.id)] = String(e.courseId); });
 
+    const enrollChild = {};
+    enrollments.forEach(e => { enrollChild[String(e.id)] = String(e.childId); });
+    const childMap2 = indexBy(children, 'id');
+
     const myByCourse = {};
     mine.forEach(x => {
       const k = enrollCourse[String(x.enrollmentId)] || '';
-      if (!myByCourse[k]) myByCourse[k] = { done: 0, upcoming: 0 };
+      if (!myByCourse[k]) myByCourse[k] = { done: 0, upcoming: 0, kids: {} };
       if (x.status === SESSION_STATUS.COMPLETED) myByCourse[k].done++;
       if (x.status === SESSION_STATUS.SCHEDULED) myByCourse[k].upcoming++;
+
+      // เก็บรายชื่อเด็กที่ตัวเองสอนในคอร์สนี้ ไว้ให้กดดูรายละเอียดได้
+      const cid = enrollChild[String(x.enrollmentId)];
+      if (!cid) return;
+
+      if (!myByCourse[k].kids[cid]) {
+        const c = childMap2[cid] || {};
+        myByCourse[k].kids[cid] = {
+          name: c.nickname || c.name || '', done: 0, upcoming: 0,
+        };
+      }
+      if (x.status === SESSION_STATUS.COMPLETED) myByCourse[k].kids[cid].done++;
+      if (x.status === SESSION_STATUS.SCHEDULED) myByCourse[k].kids[cid].upcoming++;
     });
 
     const list = courses
@@ -170,7 +192,7 @@ function getCourseBoard(sess) {
       .map(c => {
         const k  = String(c.id);
         const st = byCourse[k]   || { enrolled: 0, active: 0 };
-        const my = myByCourse[k] || { done: 0, upcoming: 0 };
+        const my = myByCourse[k] || { done: 0, upcoming: 0, kids: {} };
         return {
           id:            c.id,
           name:          c.name,
@@ -183,6 +205,8 @@ function getCourseBoard(sess) {
           myDone:        my.done,
           myUpcoming:    my.upcoming,
           teaching:      (my.done + my.upcoming) > 0,
+          students:      Object.keys(my.kids).map(id => my.kids[id])
+                           .sort((a, b) => String(a.name).localeCompare(String(b.name), 'th')),
         };
       });
 
@@ -221,6 +245,68 @@ function getCourseBoard(sess) {
     children:    children.map(c => ({ id: c.id, name: c.name, nickname: c.nickname })),
     canEdit:     true,
     mode:        'admin',
+  };
+}
+
+// ── รายละเอียดคอร์สสำหรับผู้ฝึกสอน ──────────────────────────
+// เห็นเฉพาะเด็กที่ตัวเองสอนในคอร์สนั้น ไม่ใช่ทุกคนที่ลงทะเบียน
+function getMyCourseDetail(sess, p) {
+  const me = readAll(SHEET.TRAINERS)
+    .find(t => String(t.userId) === String(sess.userId));
+  if (!me) throw new Error('บัญชีนี้ยังไม่ได้ผูกกับข้อมูลผู้ฝึกสอน');
+
+  const course = readOne(SHEET.COURSES, p.id);
+  if (!course) throw new Error('ไม่พบคอร์ส');
+
+  const sessions   = readAll(SHEET.SESSIONS);
+  const enrollMap  = indexBy(readAll(SHEET.ENROLLMENTS), 'id');
+  const childMap   = indexBy(readAll(SHEET.CHILDREN), 'id');
+  const today      = todayTH();
+
+  const mine = sessions.filter(x => {
+    if (String(x.trainerId) !== String(me.id)) return false;
+    const e = enrollMap[String(x.enrollmentId)] || {};
+    return String(e.courseId) === String(p.id);
+  });
+
+  const byEnroll = groupBy(mine, 'enrollmentId');
+
+  const kids = Object.keys(byEnroll).map(eid => {
+    const list  = byEnroll[eid];
+    const enr   = enrollMap[eid] || {};
+    const child = childMap[String(enr.childId)] || {};
+
+    const all   = sessions.filter(x => String(x.enrollmentId) === eid);
+    const total = Number(enr.totalSessions) || 0;
+    const done  = all.filter(x => x.status === SESSION_STATUS.COMPLETED).length;
+
+    const next = list
+      .filter(x => x.status === SESSION_STATUS.SCHEDULED && String(x.date) >= today)
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
+
+    return {
+      childName: child.nickname || child.name || '',
+      alerts:    childAlerts(child),
+      myDone:    list.filter(x => x.status === SESSION_STATUS.COMPLETED).length,
+      pending:   list.filter(x => x.status === SESSION_STATUS.SCHEDULED &&
+                                  String(x.date) < today).length,
+      done:      done,
+      total:     total,
+      remaining: Math.max(0, total - all.filter(x => x.status !== SESSION_STATUS.CANCELLED).length),
+      nextDate:  next ? next.date : '',
+      nextTime:  next ? next.startTime : '',
+    };
+  });
+
+  kids.sort((a, b) => String(a.childName).localeCompare(String(b.childName), 'th'));
+
+  return {
+    name:          course.name,
+    description:   course.description,
+    category:      course.category,
+    totalSessions: Number(course.totalSessions) || 0,
+    durationMin:   Number(course.durationMin) || 60,
+    kids:          kids,
   };
 }
 

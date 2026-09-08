@@ -152,6 +152,23 @@ function unlinkAccount(sess, p) {
   return { success: true };
 }
 
+// ── ข้อมูลตัวบุคคลที่ผูกกับบัญชีได้ ─────────────────────────
+// ลำดับงานจริงคือสร้างข้อมูลผู้ปกครองหรือผู้ฝึกสอนก่อน แล้วค่อยเปิดบัญชีให้
+// การผูกจึงอยู่ที่ฟอร์มผู้ใช้งาน ไม่ใช่ในฟอร์มของแต่ละฝั่ง
+function getLinkTargets(sess) {
+  const pick = (rows) => rows.map(x => ({
+    id:       x.id,
+    name:     x.name,
+    phone:    x.phone,
+    linkedTo: String(x.userId || ''),
+  })).sort((a, b) => String(a.name).localeCompare(String(b.name), 'th'));
+
+  return {
+    parent:  pick(readAll(SHEET.PARENTS)),
+    trainer: pick(readAll(SHEET.TRAINERS)),
+  };
+}
+
 // ── กันไม่ให้เหลือผู้ดูแลระบบศูนย์คน ────────────────────────
 // ถ้าปิดคนสุดท้ายจะไม่มีใครเข้าไปแก้อะไรได้อีก ต้องแก้ที่ชีตโดยตรง
 function guardLastAdmin(allUsers, excludeId) {

@@ -33,6 +33,7 @@ const NAV = {
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางเรียน',    icon: 'calendar' },
     { id: 'courses',  label: 'คอร์สของเรา',   icon: 'book' },
+    { id: 'activity', label: 'บันทึกการเรียน', icon: 'note', short: 'บันทึก' },
     { id: 'people',   label: 'ข้อมูลบุตรหลาน', icon: 'people', short: 'บุตรหลาน' },
   ],
 };
