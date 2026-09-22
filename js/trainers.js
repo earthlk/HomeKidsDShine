@@ -64,9 +64,14 @@ const Trainers = {
 
   card(t) {
     // ผู้ฝึกสอนที่ไม่มีบัญชีเข้าระบบจะบันทึกกิจกรรมเองไม่ได้ ต้องเห็นตั้งแต่การ์ด
-    const warn = !t.hasAccount
+    const warn = (!t.hasAccount
       ? '<span class="pchip pchip--warn">ยังไม่มีบัญชีเข้าระบบ</span>'
-      : (!t.accountActive ? '<span class="pchip pchip--muted">บัญชีถูกปิด</span>' : '');
+      : (!t.accountActive ? '<span class="pchip pchip--muted">บัญชีถูกปิด</span>' : ''))
+      // ไม่มีคอร์สที่รับสอน แปลว่าลงนัดให้คนนี้ไม่ได้เลย
+      + (!(t.courseIds || []).length
+          ? '<span class="pchip pchip--warn">ยังไม่ได้เลือกคอร์สที่รับสอน</span>' : '');
+
+    const courses = this.courseNames(t.courseIds);
 
     return `
       <article class="pcard ${t.active ? '' : 'pcard--off'}" data-open="${UI.esc(t.id)}">
@@ -99,8 +104,19 @@ const Trainers = {
           </div>
         </div>
 
+        ${courses.length ? `<div class="pcard__alerts">
+          ${courses.map(n => `<span class="pchip">${UI.esc(n)}</span>`).join('')}
+        </div>` : ''}
+
         ${warn ? `<div class="pcard__alerts">${warn}</div>` : ''}
       </article>`;
+  },
+
+  // แปลงรายการ id คอร์สเป็นชื่อ ตัดตัวที่หาไม่เจอออก เช่นคอร์สที่ถูกลบไปแล้ว
+  courseNames(ids) {
+    const map = {};
+    (this.data.courses || []).forEach(c => { map[String(c.id)] = c.name; });
+    return (ids || []).map(id => map[String(id)]).filter(Boolean);
   },
 
   // ── รายละเอียด ────────────────────────────────────────────
@@ -120,6 +136,16 @@ const Trainers = {
       ${People.section('ข้อมูลติดต่อ', [
         ['โทรศัพท์', t.phone],
         ['อีเมลเข้าระบบ', t.email],
+      ])}
+
+      ${People.section('คอร์สที่รับสอน', [
+        ['คอร์ส', this.courseNames(t.courseIds).join(', ') || 'ยังไม่ได้เลือก'],
+      ])}
+
+      ${People.section('บัญชีรับค่าสอน', [
+        ['ธนาคาร', t.bankName],
+        ['เลขบัญชี', t.bankAccountNo],
+        ['ชื่อบัญชี', t.bankAccountName],
       ])}
 
       ${People.section('การใช้งาน', [
@@ -188,6 +214,16 @@ const Trainers = {
       ${People.finput('t_specialization', 'ความถนัด', t.specialization,
         'เช่น พัฒนาการกล้ามเนื้อมัดใหญ่')}
 
+      ${People.fgroup('คอร์สที่รับสอน', 'ลงนัดให้ผู้ฝึกสอนคนนี้ได้เฉพาะคอร์สที่เลือกไว้')}
+      ${this.courseChips(t.courseIds || [])}
+
+      ${People.fgroup('บัญชีรับค่าสอน', 'ใช้ในหน้าการเงิน เห็นเฉพาะผู้ดูแลระบบ')}
+      ${People.fselect('t_bankName', 'ธนาคาร', this.BANKS, t.bankName, 'เลือกธนาคาร')}
+      <div class="frow">
+        ${People.finput('t_bankAccountNo', 'เลขบัญชี', t.bankAccountNo, 'ตัวเลขอย่างเดียว')}
+        ${People.finput('t_bankAccountName', 'ชื่อบัญชี', t.bankAccountName, 'ตามหน้าสมุดบัญชี')}
+      </div>
+
       ${editing && !t.hasAccount ? `
         <div class="notice notice--info">
           ยังไม่มีบัญชีเข้าระบบ ไปสร้างและผูกได้ที่หน้าผู้ใช้งาน
@@ -198,11 +234,37 @@ const Trainers = {
         <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
       </div>`);
 
+    document.querySelectorAll('[data-course]').forEach(b => {
+      b.onclick = () => b.classList.toggle('is-on');
+    });
+
     People.bindSheet({
       close: () => UI.closeSheet(),
       save:  () => Trainers.submit(t.id, t.active),
     });
   },
+
+  // ปุ่มเลือกคอร์ส กดสลับเปิดปิดได้ทีละอัน
+  // คอร์สที่ปิดการขายแล้วยังแสดงถ้าเคยเลือกไว้ เพราะอาจมีนัดเก่าค้างอยู่
+  courseChips(selected) {
+    const list = (this.data.courses || [])
+      .filter(c => c.active || selected.indexOf(String(c.id)) >= 0);
+
+    if (!list.length) {
+      return '<p class="fhint">ยังไม่มีคอร์สในระบบ เพิ่มคอร์สที่หน้าคอร์สก่อน</p>';
+    }
+
+    return '<div class="chipbar">' + list.map(c => `
+      <button type="button" class="chipbtn${selected.indexOf(String(c.id)) >= 0 ? ' is-on' : ''}"
+        data-course="${UI.esc(c.id)}">
+        ${UI.esc(c.name)}${c.active ? '' : ' (ปิดการขาย)'}
+      </button>`).join('') + '</div>';
+  },
+
+  // ธนาคารที่คนไทยใช้บ่อย เลือกจากรายการกันพิมพ์ชื่อไม่ตรงกัน
+  BANKS: ['กสิกรไทย', 'ไทยพาณิชย์', 'กรุงเทพ', 'กรุงไทย', 'กรุงศรีอยุธยา',
+          'ทหารไทยธนชาต', 'ออมสิน', 'ธ.ก.ส.', 'ยูโอบี', 'ซีไอเอ็มบี ไทย',
+          'แลนด์ แอนด์ เฮ้าส์', 'เกียรตินาคินภัทร', 'อาคารสงเคราะห์'],
 
   async submit(id, active) {
     const payload = {
@@ -211,6 +273,12 @@ const Trainers = {
       phone:          People.val('t_phone'),
       specialization: People.val('t_specialization'),
       active:         id ? active : true,
+      courseIds:      Array.prototype.slice
+                        .call(document.querySelectorAll('[data-course].is-on'))
+                        .map(b => b.dataset.course),
+      bankName:        People.val('t_bankName'),
+      bankAccountNo:   People.val('t_bankAccountNo'),
+      bankAccountName: People.val('t_bankAccountName'),
     };
 
     if (!payload.name) { UI.toast('กรอกชื่อผู้ฝึกสอนก่อน', 'error'); return; }

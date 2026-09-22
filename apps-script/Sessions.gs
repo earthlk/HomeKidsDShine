@@ -130,6 +130,7 @@ function getScheduleMeta(sess) {
       // ชื่อจริงและชื่อผู้ปกครองไว้แยกเด็กที่ชื่อเล่นซ้ำกัน
       childFullName: child.name || '',
       parentName: parent.name || '',
+      courseId:   String(e.courseId),
       courseName: course.name || '',
       durationMin: Number(course.durationMin) || 60,
       remaining: total - used,
@@ -140,7 +141,7 @@ function getScheduleMeta(sess) {
 
   const trainers = readAll(SHEET.TRAINERS)
     .filter(t => t.active === '' || isTrue(t.active))
-    .map(t => ({ id: t.id, name: t.name }));
+    .map(t => ({ id: t.id, name: t.name, courseIds: parseIds(t.courseIds) }));
 
   return { enrollments: options, trainers: trainers };
 }
@@ -209,6 +210,15 @@ function validateSession(p, editingId) {
   if (!enr) throw new Error('ไม่พบรายการลงทะเบียน');
   if (String(enr.status) === 'closed') {
     throw new Error('รายการลงทะเบียนนี้ปิดแล้ว เปิดรายการก่อนจึงจะนัดเพิ่มได้');
+  }
+
+  // ลงนัดได้เฉพาะผู้ฝึกสอนที่รับสอนคอร์สนี้ไว้
+  const trainer = readOne(SHEET.TRAINERS, p.trainerId);
+  if (!trainer) throw new Error('ไม่พบผู้ฝึกสอน');
+  if (parseIds(trainer.courseIds).indexOf(String(enr.courseId)) < 0) {
+    const course = readOne(SHEET.COURSES, enr.courseId) || {};
+    throw new Error(trainer.name + ' ไม่ได้รับสอน ' + (course.name || 'คอร์สนี้') +
+                    ' เพิ่มคอร์สให้ที่หน้าผู้ฝึกสอนก่อน');
   }
 
   // นัดเกินจำนวนครั้งที่ซื้อไว้ไม่ได้ ยอดคงเหลือจะติดลบ

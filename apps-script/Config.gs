@@ -6,7 +6,7 @@
 // ── Spreadsheet ─────────────────────────────────────────────
 // ⚠️ หลังรัน createNewSpreadsheet() ใน Setup.gs แล้ว
 //    ให้เอา ID ที่ได้จาก Log มาใส่ตรงนี้
-const SPREADSHEET_ID = 'https://script.google.com/macros/s/AKfycby6VlRSq83TK8wVgT6xrsT6cW90VN1kE6cOkaCWllONhgz1TztEkpnwJ5-0Ssnlm1bA/exec';
+const SPREADSHEET_ID = 'ใส่_ID_ชีตใหม่_ที่นี่';
 
 // ID ชีตเก่า — ใช้ตอน migrate ข้อมูลเท่านั้น ไม่ได้ใช้ในระบบจริง
 const OLD_SPREADSHEET_ID = '17zBt9UHieSkprg28hZ7abTBKoV7mO9nzHHMz8UAJUV4';
@@ -57,6 +57,11 @@ const SCHEMA = {
   [SHEET.TRAINERS]: [
     'id', 'userId', 'name', 'phone', 'specialization', 'active',
     'createdAt', 'updatedAt',
+    // คอร์สที่ผู้ฝึกสอนคนนี้รับสอน เก็บเป็นรายการ id คั่นด้วยจุลภาค
+    // ลงนัดได้เฉพาะผู้ฝึกสอนที่มีคอร์สนั้นอยู่ในรายการ
+    'courseIds',
+    // บัญชีรับค่าสอน ใช้ในหน้าการเงิน
+    'bankName', 'bankAccountNo', 'bankAccountName',
   ],
   [SHEET.COURSES]: [
     'id', 'name', 'description', 'category',

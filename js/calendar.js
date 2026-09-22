@@ -652,9 +652,6 @@ const Cal = {
 
     const chosen = String(s.enrollmentId || opts.enrollment || '');
 
-    const trainerOpts = this.meta.trainers.map(t =>
-      `<option value="${UI.esc(t.id)}"${String(s.trainerId) === String(t.id) ? ' selected' : ''}>
-        ${UI.esc(t.name)}</option>`).join('');
 
     UI.fillSheet(`
       <div class="sheet__title">${editing ? 'แก้ไขนัดหมาย' : 'ลงนัด'}</div>
@@ -677,9 +674,10 @@ const Cal = {
       </div>
       <div class="field">
         <label class="field__label" for="s_trainerId">ผู้ฝึกสอน</label>
-        <select class="field__input" id="s_trainerId">
-          <option value="">เลือกผู้ฝึกสอน</option>${trainerOpts}
+        <select class="field__input" id="s_trainerId" disabled>
+          <option value="">เลือกเด็กและคอร์สก่อน</option>
         </select>
+        <p class="fhint" id="s_trainerHint"></p>
       </div>
 
       ${People.fgroup('วันและเวลา')}
@@ -719,6 +717,8 @@ const Cal = {
     const setMinutes = (id) => {
       const found = list.find(e => String(e.id) === String(id));
       minutes = (found && Number(found.durationMin)) || 60;
+      // เปลี่ยนรายการแล้วผู้สอนที่เลือกได้เปลี่ยนตามคอร์ส
+      Cal.fillTrainers(found ? found.courseId : '', s.trainerId);
     };
     if (chosen) setMinutes(chosen);
 
@@ -801,6 +801,38 @@ const Cal = {
         <span class="picker__sub">${UI.esc(e.courseName)}${who ? ' — ' + UI.esc(who) : ''}</span>
         <span class="picker__left${e.remaining <= 2 ? ' picker__left--low' : ''}">เหลือ ${e.remaining}</span>
       </button>`;
+  },
+
+  // ผู้สอนที่เลือกได้ต้องรับสอนคอร์สนั้นไว้แล้ว หลังบ้านตรวจซ้ำอีกชั้น
+  // ถ้าไม่รู้ว่าเป็นคอร์สอะไร เช่นแก้นัดของรายการที่ใช้ครบแล้ว ให้เลือกได้ทุกคน
+  fillTrainers(courseId, keepId) {
+    const sel  = document.getElementById('s_trainerId');
+    const hint = document.getElementById('s_trainerHint');
+    if (!sel) return;
+
+    const all  = this.meta.trainers || [];
+    const list = courseId
+      ? all.filter(t => (t.courseIds || []).indexOf(String(courseId)) >= 0)
+      : all;
+
+    const keep = String(keepId || sel.value || '');
+
+    sel.disabled  = !list.length;
+    sel.innerHTML = '<option value="">' +
+      (list.length ? 'เลือกผู้ฝึกสอน' : 'ยังไม่มีผู้สอนคอร์สนี้') + '</option>' +
+      list.map(t => `<option value="${UI.esc(t.id)}"${String(t.id) === keep ? ' selected' : ''}>
+        ${UI.esc(t.name)}</option>`).join('');
+
+    // มีผู้สอนคนเดียวก็เลือกให้เลย ไม่ต้องกดเพิ่มอีกครั้ง
+    if (list.length === 1 && !keep) sel.value = list[0].id;
+
+    if (hint) {
+      hint.textContent = !courseId ? ''
+        : list.length
+          ? 'แสดงเฉพาะผู้สอนที่รับสอนคอร์สนี้ ' + list.length + ' คน'
+          : 'ยังไม่มีผู้สอนที่รับสอนคอร์สนี้ เพิ่มคอร์สให้ผู้สอนที่หน้าผู้ฝึกสอนก่อน';
+      hint.style.color = courseId && !list.length ? 'var(--coral)' : '';
+    }
   },
 
   bindPickRows(box, setMinutes, bumpEnd, redraw) {

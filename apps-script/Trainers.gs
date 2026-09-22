@@ -3,6 +3,12 @@
 // ข้อมูลผู้ฝึกสอน
 // ============================================================
 
+// คอร์สที่รับสอนเก็บเป็นข้อความคั่นจุลภาคในเซลล์เดียว
+// ง่ายกว่าแยกชีตใหม่ และจำนวนคอร์สของศูนย์มีไม่มาก
+function parseIds(value) {
+  return String(value || '').split(',').map(x => x.trim()).filter(Boolean);
+}
+
 function getTrainerBoard(sess) {
   const trainers = readAll(SHEET.TRAINERS);
   const users    = readAll(SHEET.USERS);
@@ -23,6 +29,11 @@ function getTrainerBoard(sess) {
       phone:          t.phone,
       specialization: t.specialization,
       active:         t.active === '' ? true : isTrue(t.active),
+
+      courseIds:       parseIds(t.courseIds),
+      bankName:        t.bankName || '',
+      bankAccountNo:   t.bankAccountNo || '',
+      bankAccountName: t.bankAccountName || '',
 
       // บัญชีเข้าระบบ ถ้าไม่มีจะเข้าใช้งานไม่ได้เลย ต้องเห็นชัดจากหน้านี้
       email:          account ? account.email : '',
@@ -52,7 +63,11 @@ function getTrainerBoard(sess) {
       linkedTo: taken[String(u.id)] || '',
     }));
 
-  return { trainers: rows, linkable: linkable };
+  const courses = readAll(SHEET.COURSES)
+    .map(c => ({ id: c.id, name: c.name, category: c.category, active: isTrue(c.active) }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name), 'th'));
+
+  return { trainers: rows, linkable: linkable, courses: courses };
 }
 
 // ── บันทึกผู้ฝึกสอน ─────────────────────────────────────────
@@ -62,11 +77,45 @@ function saveTrainer(sess, p) {
   const name = String(p.name || '').trim();
   if (!name) throw new Error('กรอกชื่อผู้ฝึกสอนก่อน');
 
+  const courseIds = [].concat(p.courseIds || []).map(String).filter(Boolean);
+
+  // เอาคอร์สออกไม่ได้ถ้ายังมีนัดที่ยังไม่ถึงในคอร์สนั้น
+  // ไม่งั้นนัดเดิมจะกลายเป็นผู้สอนที่ไม่ได้รับสอนคอร์สนั้นแล้ว
+  if (p.id) {
+    const current = readOne(SHEET.TRAINERS, p.id);
+    const removed = parseIds(current && current.courseIds)
+      .filter(id => courseIds.indexOf(id) < 0);
+
+    if (removed.length) {
+      const today     = todayTH();
+      const enrollMap = indexBy(readAll(SHEET.ENROLLMENTS), 'id');
+      const courseMap = indexBy(readAll(SHEET.COURSES), 'id');
+
+      const stuck = readAll(SHEET.SESSIONS).filter(x =>
+        String(x.trainerId) === String(p.id) &&
+        x.status === SESSION_STATUS.SCHEDULED &&
+        String(x.date) >= today &&
+        removed.indexOf(String((enrollMap[String(x.enrollmentId)] || {}).courseId)) >= 0);
+
+      if (stuck.length) {
+        const names = removed
+          .map(id => (courseMap[id] || {}).name || id)
+          .join(', ');
+        throw new Error('เอา ' + names + ' ออกไม่ได้ เพราะยังมีนัดที่ยังไม่ถึงอีก ' +
+                        stuck.length + ' ครั้ง ย้ายนัดให้ผู้สอนคนอื่นก่อน');
+      }
+    }
+  }
+
   const fields = {
-    name:           name,
-    phone:          String(p.phone || '').trim(),
-    specialization: String(p.specialization || '').trim(),
-    active:         p.active === false ? false : true,
+    name:            name,
+    phone:           String(p.phone || '').trim(),
+    specialization:  String(p.specialization || '').trim(),
+    active:          p.active === false ? false : true,
+    courseIds:       courseIds.join(','),
+    bankName:        String(p.bankName || '').trim(),
+    bankAccountNo:   String(p.bankAccountNo || '').replace(/[^0-9]/g, ''),
+    bankAccountName: String(p.bankAccountName || '').trim(),
   };
 
   if (p.id) {

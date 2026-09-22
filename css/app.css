@@ -1501,3 +1501,7 @@ button.rail__user:hover .rail__more { color: var(--clay); }
   font-size: var(--t-sm);
   line-height: 1.5;
 }
+
+/* การ์ดคอร์สของผู้ฝึกสอนกดดูรายละเอียดได้ */
+.ccard--tap { cursor: pointer; transition: border-color 0.15s; }
+.ccard--tap:hover { border-color: var(--clay); }

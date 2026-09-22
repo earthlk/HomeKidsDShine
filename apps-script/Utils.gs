@@ -50,7 +50,8 @@ function cellToValue(val) {
 // ชีตจะมองว่าเป็นตัวเลขแล้วตัดศูนย์หน้าทิ้ง 0812345678 กลายเป็น 812345678
 function isTextyField(header) {
   const h = String(header).toLowerCase();
-  return h.indexOf('phone') >= 0 || h === 'taxid';
+  // เลขบัญชีธนาคารบางธนาคารขึ้นต้นด้วยศูนย์ ถ้าชีตแปลงเป็นตัวเลขจะหายเหมือนเบอร์โทร
+  return h.indexOf('phone') >= 0 || h === 'taxid' || h === 'bankaccountno';
 }
 
 function fixTexty(header, value) {
@@ -58,10 +59,14 @@ function fixTexty(header, value) {
   if (typeof value !== 'number') return value;
 
   let text = String(value);
-  if (String(header).toLowerCase() === 'taxid') {
+  const key = String(header).toLowerCase();
+  if (key === 'taxid') {
     while (text.length < 13) text = '0' + text;   // เลขผู้เสียภาษีมี 13 หลัก
     return text;
   }
+  // เลขบัญชีเดาจำนวนศูนย์ที่หายไม่ได้ เพราะแต่ละธนาคารยาวไม่เท่ากัน
+  // คืนค่าตามที่อ่านได้ แล้วให้ repairPhoneNumbers ตั้งรูปแบบคอลัมน์กันเสียซ้ำ
+  if (key === 'bankaccountno') return text;
   return '0' + text;                              // เบอร์โทรไทยขึ้นต้นด้วยศูนย์
 }
 
