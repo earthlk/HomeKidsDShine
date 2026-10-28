@@ -29,6 +29,9 @@ function getUsers(sess) {
     phone:     u.phone,
     role:      u.role,
     active:    isTrue(u.active),
+    // บัญชีที่ยังไม่ยืนยันอีเมลยังเข้าระบบไม่ได้ ต้องเห็นจากหน้ารายการ
+    verified:  isVerified(u),
+    inviteExpires: String(u.inviteExpires || ''),
     linked:    u.role === ROLE.TRAINER ? (trainerBy[String(u.id)] || '')
              : u.role === ROLE.PARENT  ? (parentBy[String(u.id)]  || '')
              : '',
@@ -90,17 +93,29 @@ function saveUser(sess, p) {
     if (p.linkId !== undefined) linkProfile(p.id, role, String(p.linkId || ''));
 
     audit(sess.userId, 'UPDATE', 'user', p.id);
+
+    // แก้อีเมลของบัญชีที่ยังไม่ยืนยัน = ตอนสร้างพิมพ์ผิด ลิงก์เดิมไปผิดที่แล้ว
+    // ส่งใหม่ให้อัตโนมัติ ไม่ต้องให้ผู้ดูแลระบบจำว่าต้องกดส่งอีกปุ่ม
+    if (!isVerified(current) &&
+        String(current.email).trim().toLowerCase() !== email) {
+      const again = issueInvite(Object.assign({}, current, fields, { id: p.id }));
+      return { id: p.id, invite: again };
+    }
+
     return { id: p.id };
   }
 
-  const password = String(p.password || '');
-  if (password.length < 8) throw new Error('รหัสผ่านต้องยาวอย่างน้อย 8 ตัวอักษร');
-
+  // ── บัญชีใหม่ ──────────────────────────────────────────────
+  // ไม่ตั้งรหัสผ่านให้ เว้นช่องว่างไว้แล้วส่งลิงก์ยืนยันไปที่อีเมล
+  // เจ้าตัวเป็นคนตั้งรหัสเอง ผู้ดูแลระบบจึงไม่เคยรู้รหัสของใคร
   const row = insertRow(SHEET.USERS, Object.assign(fields, {
-    password:   hashPassword(password),
-    active:     true,
-    lineUserId: '',
-    googleId:   '',
+    password:      '',
+    active:        true,
+    lineUserId:    '',
+    googleId:      '',
+    verified:      false,
+    inviteToken:   '',
+    inviteExpires: '',
   }));
 
   if (p.linkId) {
@@ -113,8 +128,11 @@ function saveUser(sess, p) {
     }
   }
 
+  // ออกลิงก์หลังผูกข้อมูลสำเร็จ ไม่งั้นอีเมลอาจออกไปแล้วบัญชีถูกย้อนคืนทิ้ง
+  const invite = issueInvite(row);
+
   audit(sess.userId, 'CREATE', 'user', row.id);
-  return { id: row.id };
+  return { id: row.id, invite: invite };
 }
 
 // ── เปิดหรือปิดบัญชี ────────────────────────────────────────
@@ -137,7 +155,9 @@ function toggleUser(sess, p) {
 }
 
 // รหัสผ่านเป็นของเจ้าของบัญชีเท่านั้น ผู้ดูแลระบบตั้งให้ไม่ได้
-// ถ้าลืมรหัส ให้ปิดบัญชีเดิมแล้วเปิดบัญชีใหม่พร้อมรหัสแรกเข้า
+// บัญชีใหม่ตั้งรหัสเองผ่านลิงก์ยืนยันอีเมล ดู issueInvite ใน Invites.gs
+// ลิงก์หายหรือหมดอายุ ผู้ดูแลระบบกดส่งใหม่ได้ด้วย resendInvite
+// ลืมรหัสผ่าน เจ้าตัวกดขอลิงก์เองได้จากหน้าเข้าสู่ระบบ ดู requestReset ใน Invites.gs
 
 // ── ตัดการเชื่อมบัญชี LINE หรือ Google ──────────────────────
 function unlinkAccount(sess, p) {

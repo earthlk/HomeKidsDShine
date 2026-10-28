@@ -55,6 +55,17 @@ const App = {
 
   // ── เริ่มต้นแอป ───────────────────────────────────────────
   boot() {
+    // มาจากลิงก์ยืนยันอีเมลหรือลิงก์ลืมรหัสผ่าน ให้ตั้งรหัสก่อน
+    // แม้จะมี session ค้างอยู่ในเครื่อง เพราะคนที่เปิดลิงก์อาจเป็นคนละคน
+    // สองลิงก์ใช้หน้าเดียวกัน ต่างแค่ชื่อพารามิเตอร์ ตัวหลังบ้านเป็นคนบอกว่าโหมดไหน
+    const q      = new URLSearchParams(location.search);
+    const invite = q.get('invite') || q.get('reset');
+    if (invite) {
+      Store.clear();
+      Auth.renderInvite(invite);
+      return;
+    }
+
     if (Store.get('token')) {
       this.start();
     } else {

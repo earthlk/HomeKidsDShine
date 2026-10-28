@@ -22,7 +22,19 @@ function login(email, password) {
   const user   = readAll(SHEET.USERS)
     .find(u => String(u.email).trim().toLowerCase() === target);
 
-  if (!user || String(user.password).trim() !== hash) {
+  if (!user) {
+    return { ok: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
+  }
+
+  // บัญชีที่ยังไม่ได้ยืนยันอีเมลจะไม่มีรหัสผ่าน บอกให้ตรงเรื่องไปเลย
+  // ไม่งั้นเจ้าตัวจะนั่งลองรหัสที่ไม่มีอยู่จริงแล้วคิดว่าตัวเองพิมพ์ผิด
+  if (!String(user.password || '').trim()) {
+    return { ok: false, code: 'NOT_VERIFIED',
+      message: 'บัญชีนี้ยังไม่ได้ยืนยันอีเมล เปิดลิงก์ในอีเมลที่ศูนย์ส่งให้ ' +
+               'เพื่อตั้งรหัสผ่านก่อน ถ้าหาอีเมลไม่เจอให้แจ้งผู้ดูแลศูนย์ส่งใหม่' };
+  }
+
+  if (String(user.password).trim() !== hash) {
     return { ok: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
   }
   if (!isTrue(user.active)) {
@@ -88,6 +100,32 @@ function logout(token) {
   CacheService.getScriptCache().remove('s_' + token);
   PropertiesService.getScriptProperties().deleteProperty('s_' + token);
   return { ok: true };
+}
+
+// ── เตะทุกเครื่องของบัญชีหนึ่งออกจากระบบ ───────────────────
+// ใช้ตอนตั้งรหัสผ่านใหม่ผ่านลิงก์ลืมรหัส เพราะรหัสเดิมอาจรั่วไปแล้ว
+// ถ้าไม่ลบ session เดิม คนที่แอบใช้บัญชีอยู่จะใช้ต่อได้อีก 12 ชั่วโมง
+function revokeSessions(userId) {
+  const props = PropertiesService.getScriptProperties();
+  const cache = CacheService.getScriptCache();
+  const all   = props.getProperties();
+  let killed  = 0;
+
+  Object.keys(all).forEach(key => {
+    if (key.indexOf('s_') !== 0) return;
+    try {
+      if (String(JSON.parse(all[key]).userId) !== String(userId)) return;
+    } catch (e) {
+      return;   // อ่านไม่ออก ปล่อยให้ cleanExpiredSessions เก็บกวาดเอง
+    }
+    // cache กับ properties ใช้คีย์เดียวกันคือ 's_' + token
+    props.deleteProperty(key);
+    cache.remove(key);
+    killed++;
+  });
+
+  Logger.log('เตะ session ของ ' + userId + ' ออก ' + killed + ' รายการ');
+  return killed;
 }
 
 // ลบ session ที่หมดอายุออกจาก ScriptProperties

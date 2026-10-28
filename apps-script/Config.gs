@@ -39,6 +39,10 @@ const SCHEMA = {
   [SHEET.USERS]: [
     'id', 'email', 'password', 'role', 'name', 'phone',
     'active', 'lineUserId', 'googleId', 'createdAt', 'updatedAt',
+    // การยืนยันตัวตนทางอีเมล — ผู้ดูแลระบบไม่ได้ตั้งรหัสผ่านให้แล้ว
+    // สร้างบัญชีแล้วระบบส่งลิงก์ไปที่อีเมล เจ้าตัวเปิดลิงก์แล้วตั้งรหัสเอง
+    // inviteToken เก็บเป็นค่าที่ผ่านการ hash แล้ว ของจริงอยู่ในอีเมลเท่านั้น
+    'verified', 'inviteToken', 'inviteExpires',
   ],
   [SHEET.PARENTS]: [
     'id', 'userId', 'name', 'nickname', 'phone', 'phoneAlt',
@@ -125,6 +129,26 @@ const ROLE = { ADMIN: 'admin', TRAINER: 'trainer', PARENT: 'parent' };
 
 // ── อายุ session token (วินาที) ─────────────────────────────
 const SESSION_TTL = 12 * 60 * 60;   // 12 ชั่วโมง
+
+// ── การยืนยันตัวตนทางอีเมล ──────────────────────────────────
+// ชื่อศูนย์และที่อยู่หน้าเว็บ ใช้ประกอบลิงก์และหัวจดหมายในอีเมลยืนยัน
+//
+// ⚠️ SITE_URL คือที่อยู่ของ "หน้าเว็บ" ที่ index.html วางอยู่
+//    ไม่ใช่ URL ที่ลงท้ายด้วย /exec ของ Apps Script
+//    เพราะ /exec ตอบกลับเป็น JSON ของ API คนที่กดลิงก์ในอีเมลจะเห็นแค่ตัวหนังสือ
+//    ไม่ใช่ฟอร์มตั้งรหัสผ่าน ค่านี้ต้องตรงกับค่า SITE_URL ใน js/config.js
+const CENTER_NAME = 'Homey Kids D Shine';
+const SITE_URL    = 'https://earthlk.github.io/HomeKidsDShine/';
+
+// ลิงก์ยืนยันมีอายุ 72 ชั่วโมง หมดแล้วให้ผู้ดูแลระบบกดส่งใหม่
+const INVITE_TTL_HOURS = 72;
+
+// ลิงก์ลืมรหัสผ่านอายุสั้นกว่ามาก เพราะเจ้าตัวเป็นคนกดขอเองและกดแล้วเปิดเลย
+// ยิ่งอายุสั้น ยิ่งเหลือเวลาให้คนอื่นที่บังเอิญเห็นอีเมลเอาไปใช้น้อยลง
+const RESET_TTL_MINUTES = 60;
+
+// ขอลิงก์ลืมรหัสผ่านซ้ำได้ทุกกี่วินาที กันคนยิงถล่มอีเมลคนอื่นเล่น
+const RESET_COOLDOWN_SEC = 120;
 
 // ── OAuth (ยังไม่เปิดใช้ใน Phase 1 — เก็บไว้ต่อ Phase หลัง) ──
 const LINE_LOGIN_CLIENT_ID     = '2010560028';

@@ -55,10 +55,13 @@ function createAdminUser() {
     return;
   }
 
+  // บัญชีแรกตั้งรหัสจากที่นี่ เพราะยังไม่มีใครเข้าไปกดสร้างบัญชีในระบบได้
+  // ถือว่ายืนยันแล้วตั้งแต่ต้น บัญชีที่สร้างต่อจากนี้ยืนยันทางอีเมลทั้งหมด
   insertRow(SHEET.USERS, {
     id: newId(), email: EMAIL, password: hashPassword(PASSWORD),
     role: ROLE.ADMIN, name: NAME, phone: '', active: true,
     lineUserId: '', googleId: '', createdAt: nowTH(), updatedAt: '',
+    verified: true, inviteToken: '', inviteExpires: '',
   });
 
   Logger.log('════════════════════════════════════');
@@ -228,6 +231,33 @@ function repairPhoneNumbers() {
   });
 
   Logger.log(fixed ? 'ซ่อมเบอร์และเลขภาษี ' + fixed + ' ช่อง' : 'ไม่มีค่าที่ต้องซ่อม');
+}
+
+// ── ติ๊กว่าบัญชีเดิมยืนยันอีเมลแล้ว ─────────────────────────
+// บัญชีที่สร้างก่อนมีระบบยืนยันอีเมลจะไม่มีค่าในคอลัมน์ verified
+// ตัวระบบไม่พังเพราะ isVerified() ถือว่าบัญชีที่มีรหัสผ่านคือยืนยันแล้ว
+// แต่รันตัวนี้ครั้งเดียวจะทำให้ป้ายในหน้าผู้ใช้งานตรงกับความจริงทุกแถว
+function backfillVerified() {
+  const rows = readAll(SHEET.USERS);
+  let marked = 0;
+
+  rows.forEach(u => {
+    if (isTrue(u.verified)) return;
+    if (!String(u.password || '').trim()) return;   // ยังไม่ตั้งรหัส ปล่อยไว้
+    updateRow(SHEET.USERS, { id: u.id, verified: true });
+    marked++;
+  });
+
+  Logger.log(marked ? 'ติ๊กว่ายืนยันแล้ว ' + marked + ' บัญชี'
+                    : 'ไม่มีบัญชีที่ต้องติ๊กเพิ่ม');
+}
+
+// ── ตรวจว่าระบบส่งอีเมลได้จริงไหม ───────────────────────────
+// รันก่อนเริ่มใช้ระบบยืนยันอีเมล ถ้าโควตาเหลือ 0 ลิงก์จะไม่ออกไปไหนเลย
+function checkMailQuota() {
+  Logger.log('โควตาอีเมลที่เหลือวันนี้: ' + MailApp.getRemainingDailyQuota() + ' ฉบับ');
+  Logger.log('SITE_URL ที่จะใส่ในลิงก์: ' + SITE_URL);
+  Logger.log('→ SITE_URL ต้องตรงกับที่หน้าเว็บอยู่จริง ไม่งั้นลิงก์ในอีเมลเปิดไม่ได้');
 }
 
 // ── ตรวจว่าติดตั้งครบหรือยัง ────────────────────────────────

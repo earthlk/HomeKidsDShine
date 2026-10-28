@@ -47,6 +47,16 @@ function route(body) {
   if (action === 'login')  return login(body.email, body.password);
   if (action === 'ping')   return { ok: true, data: { time: nowTH() } };
 
+  // ยืนยันอีเมลตั้งรหัสครั้งแรก — ตอนนี้เจ้าตัวยังไม่มีรหัสจึงล็อกอินไม่ได้
+  // ตัว token ในลิงก์ทำหน้าที่พิสูจน์ตัวตนแทน ใช้ได้ครั้งเดียวแล้วถูกลบ
+  // ใช้ชื่อ invite ไม่ใช้ token เพราะ body.token คือ session ของคนที่ล็อกอินแล้ว
+  if (action === 'checkInvite')  return checkInvite(body.invite);
+  if (action === 'acceptInvite') return acceptInvite(body.invite, body.password, body.confirm);
+
+  // ลืมรหัสผ่าน — เจ้าตัวกรอกอีเมลเอง ตอบข้อความเดียวกันเสมอ
+  // ไม่ว่าจะมีอีเมลนั้นในระบบหรือไม่ เพื่อไม่ให้คนนอกไล่เดารายชื่อสมาชิก
+  if (action === 'requestReset') return requestReset(body.email);
+
   // action ที่เหลือต้องมี token ที่ยังไม่หมดอายุ
   const sess = validateToken(body.token);
   if (!sess) {
@@ -113,6 +123,7 @@ const ROUTES = {
   toggleUser:      { roles: [ROLE.ADMIN], fn: (s, p) => toggleUser(s, p) },
   unlinkAccount:   { roles: [ROLE.ADMIN], fn: (s, p) => unlinkAccount(s, p) },
   getLinkTargets:  { roles: [ROLE.ADMIN], fn: (s)    => getLinkTargets(s) },
+  resendInvite:    { roles: [ROLE.ADMIN], fn: (s, p) => resendInvite(s, p) },
 
   getTrainerBoard: { roles: [ROLE.ADMIN], fn: (s)    => getTrainerBoard(s) },
   saveTrainer:     { roles: [ROLE.ADMIN], fn: (s, p) => saveTrainer(s, p) },
