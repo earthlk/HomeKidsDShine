@@ -1505,3 +1505,303 @@ button.rail__user:hover .rail__more { color: var(--clay); }
 /* การ์ดคอร์สของผู้ฝึกสอนกดดูรายละเอียดได้ */
 .ccard--tap { cursor: pointer; transition: border-color 0.15s; }
 .ccard--tap:hover { border-color: var(--clay); }
+
+/* ── ยืนยันอีเมลและตั้งรหัสผ่านครั้งแรก ───────────────────── */
+/* หน้านี้ใช้โครงเดียวกับหน้าเข้าสู่ระบบ เพิ่มแค่กล่องบอกว่ากำลังตั้งรหัสให้ใคร
+   เพราะลิงก์อาจถูกเปิดในเครื่องที่คนอื่นใช้อยู่ ต้องเห็นชื่อกับอีเมลก่อนตั้ง */
+.notice--warn { background: var(--honey-tint); color: var(--honey); }
+
+.invite__who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--clay-tint);
+  border-radius: var(--r-md);
+  text-align: left;
+}
+.invite__who-name {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  color: var(--ink);
+}
+.invite__who-mail {
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+
+/* ── ลิงก์ยืนยันสำรองตอนส่งอีเมลไม่สำเร็จ ─────────────────── */
+.linkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  margin-top: var(--sp-3);
+  background: var(--line-soft);
+  border-radius: var(--r-md);
+}
+.linkbox__url {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--t-xs);
+  line-height: 1.5;
+  color: var(--clay);
+  word-break: break-all;
+  user-select: all;
+}
+
+/* ปุ่มเดียวเต็มความกว้าง ใช้กับปุ่มส่งลิงก์ยืนยันใหม่ในกล่องรายละเอียด */
+.sheet__actions--single { margin-top: var(--sp-3); }
+
+/* ── ลิงก์ลืมรหัสผ่านบนหน้าเข้าสู่ระบบ ─────────────────────── */
+/* เป็นปุ่มจริงไม่ใช่ <a> เพราะไม่ได้พาไปหน้าอื่น แค่สลับมุมมองในหน้าเดิม
+   แต่ต้องดูเหมือนลิงก์ ไม่งั้นจะแย่งความสนใจจากปุ่มเข้าสู่ระบบ */
+.signin__alt {
+  margin-top: var(--sp-3);
+  text-align: center;
+}
+.linkbtn {
+  padding: var(--sp-1) var(--sp-2);
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--t-sm);
+  color: var(--clay);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.linkbtn:hover { color: var(--clay-dark); }
+.linkbtn:disabled { color: var(--mist); cursor: default; text-decoration: none; }
+
+/* ════════════════════════════════════════════════════════════
+   Phase 6 — การเงิน
+   ════════════════════════════════════════════════════════════ */
+
+/* ── ช่วงวันที่ ─────────────────────────────────────────────── */
+.daterange {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.daterange__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.daterange__k {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  padding-left: var(--sp-1);
+}
+.daterange .field__input { min-width: 142px; }
+
+.quickpick {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+/* ── แถบยอดรวม ─────────────────────────────────────────────── */
+/* ตั้งชื่อ stat ไม่ใช่ tally เพราะ .tally ที่มีอยู่เป็นตัวครอบ ไม่ใช่การ์ดเดี่ยว */
+.statbar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+.stat--warn { border-color: var(--honey); background: var(--honey-tint); }
+.stat__num {
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.stat--warn .stat__num { color: var(--honey); }
+.stat__k { font-size: var(--t-xs); color: var(--ink-soft); }
+
+/* ── รายการคาบที่คิดเงิน ───────────────────────────────────── */
+.flist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.frow2 {
+  display: grid;
+  grid-template-columns: 92px 1fr auto;
+  gap: var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.frow2__when {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.frow2__date {
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  color: var(--ink);
+}
+.frow2__time { font-size: var(--t-xs); color: var(--mist); }
+.frow2__main { min-width: 0; }
+.frow2__course {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 500;
+  color: var(--ink);
+}
+.frow2__meta { margin: 1px 0 0; font-size: var(--t-xs); color: var(--ink-soft); }
+.frow2__kids {
+  margin: 2px 0 0;
+  font-size: var(--t-xs);
+  color: var(--mist);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.frow2__money {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+.frow2__fee {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--clay);
+}
+.frow2__unit { font-size: var(--t-xs); color: var(--mist); }
+
+/* ── รายการรอบจ่าย ─────────────────────────────────────────── */
+.prow {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  text-align: left;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.prow:hover { border-color: var(--clay); }
+.prow__main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.prow__who {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  color: var(--ink);
+}
+.prow__meta { font-size: var(--t-xs); color: var(--ink-soft); }
+.prow__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-1);
+  white-space: nowrap;
+}
+.prow__amt {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--clay);
+}
+
+/* ── ยอดรวมในกล่องรายละเอียดรอบ ────────────────────────────── */
+.paysum {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--clay-tint);
+  border-radius: var(--r-lg);
+}
+.paysum__amt {
+  font-family: var(--font-head);
+  font-size: var(--t-xl);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--clay-dark);
+}
+.paysum__k { font-size: var(--t-sm); color: var(--ink-soft); }
+
+/* ── รายการคาบย่อยในรอบ ────────────────────────────────────── */
+.minilist {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line-soft);
+}
+.minirow {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: var(--sp-2) 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--t-sm);
+}
+.minirow__d { color: var(--mist); font-size: var(--t-xs); }
+.minirow__t { color: var(--ink); min-width: 0; }
+.minirow__n { color: var(--mist); font-size: var(--t-xs); margin-left: var(--sp-1); }
+.minirow__m { color: var(--clay); font-family: var(--font-head); white-space: nowrap; }
+
+/* ── อัตราค่าสอนรายคอร์สในฟอร์มผู้ฝึกสอน ───────────────────── */
+.feelist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.feerow {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: var(--sp-3);
+  align-items: center;
+}
+.feerow__name { font-size: var(--t-sm); color: var(--ink); }
+.feerow__in { display: flex; align-items: center; gap: var(--sp-2); }
+.feerow__in .field__input { width: 100%; }
+.feerow__unit { font-size: var(--t-xs); color: var(--mist); white-space: nowrap; }
+
+/* ── มือถือ ────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .statbar { grid-template-columns: 1fr; gap: var(--sp-2); }
+  .stat { padding: var(--sp-3); flex-direction: row; align-items: baseline; gap: var(--sp-2); }
+  .frow2 { grid-template-columns: 1fr auto; }
+  .frow2__when { flex-direction: row; gap: var(--sp-2); align-items: baseline; }
+  .frow2__main { grid-column: 1 / -1; }
+  .feerow { grid-template-columns: 1fr; gap: var(--sp-1); }
+  .minirow { grid-template-columns: 1fr auto; }
+  .minirow__d { grid-column: 1 / -1; }
+  .daterange { width: 100%; }
+  .daterange__item { flex: 1; }
+  .daterange .field__input { min-width: 0; width: 100%; }
+}
+
+/* ปุ่มปิดรอบต้องอยู่ระนาบเดียวกับช่องวันที่ ซึ่งชิดล่างเพราะมีป้ายกำกับอยู่บน */
+.toolbar .daterange + .toolbar__actions { align-self: flex-end; }

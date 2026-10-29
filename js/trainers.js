@@ -217,6 +217,10 @@ const Trainers = {
       ${People.fgroup('คอร์สที่รับสอน', 'ลงนัดให้ผู้ฝึกสอนคนนี้ได้เฉพาะคอร์สที่เลือกไว้')}
       ${this.courseChips(t.courseIds || [])}
 
+      ${People.fgroup('อัตราค่าสอน',
+        'คิดต่อคาบ สอนกี่คนในคาบเดียวกันก็ได้เท่าเดิม เว้นว่างไว้คือใช้ค่าตั้งต้นของคอร์ส')}
+      <div id="t_fees"></div>
+
       ${People.fgroup('บัญชีรับค่าสอน', 'ใช้ในหน้าการเงิน เห็นเฉพาะผู้ดูแลระบบ')}
       ${People.fselect('t_bankName', 'ธนาคาร', this.BANKS, t.bankName, 'เลือกธนาคาร')}
       <div class="frow">
@@ -234,14 +238,57 @@ const Trainers = {
         <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
       </div>`);
 
+    // เลือกคอร์สแล้วช่องอัตราค่าสอนต้องขึ้นตามทันที ไม่ต้องบันทึกก่อน
     document.querySelectorAll('[data-course]').forEach(b => {
-      b.onclick = () => b.classList.toggle('is-on');
+      b.onclick = () => { b.classList.toggle('is-on'); Trainers.paintFees(t.fees || {}); };
     });
+    this.paintFees(t.fees || {});
 
     People.bindSheet({
       close: () => UI.closeSheet(),
       save:  () => Trainers.submit(t.id, t.active),
     });
+  },
+
+  // ── ช่องอัตราค่าสอนรายคอร์ส ───────────────────────────────
+  // ขึ้นเฉพาะคอร์สที่เลือกไว้ตอนนี้ ไม่ใช่ทุกคอร์สในระบบ
+  // อ่านค่าที่พิมพ์ค้างไว้กลับมาก่อนวาดใหม่ ไม่งั้นกดเลือกคอร์สอื่นแล้วค่าที่พิมพ์หาย
+  paintFees(saved) {
+    const box = document.getElementById('t_fees');
+    if (!box) return;
+
+    const typed = {};
+    box.querySelectorAll('[data-fee]').forEach(i => { typed[i.dataset.fee] = i.value; });
+
+    const on = Array.prototype.slice
+      .call(document.querySelectorAll('[data-course].is-on'))
+      .map(b => b.dataset.course);
+
+    if (!on.length) {
+      box.innerHTML = '<p class="fhint">เลือกคอร์สที่รับสอนก่อน แล้วจะกรอกอัตราค่าสอนได้</p>';
+      return;
+    }
+
+    const byId = {};
+    (this.data.courses || []).forEach(c => { byId[String(c.id)] = c; });
+
+    box.innerHTML = '<div class="feelist">' + on.map(id => {
+      const c   = byId[id] || {};
+      const val = typed[id] !== undefined ? typed[id]
+                : (saved[id] !== undefined ? saved[id] : '');
+      const def = Number(c.trainerFee || 0);
+      return `
+        <label class="feerow">
+          <span class="feerow__name">${UI.esc(c.name || id)}</span>
+          <span class="feerow__in">
+            <input class="field__input" type="number" min="0" step="10"
+              data-fee="${UI.esc(id)}" value="${UI.esc(val)}"
+              placeholder="${def ? UI.money(def) : 'ยังไม่ตั้งค่าตั้งต้น'}">
+            <span class="feerow__unit">บาท/คาบ</span>
+          </span>
+        </label>`;
+    }).join('') + '</div>' +
+    '<p class="fhint">ตัวเลขจาง ๆ คือค่าตั้งต้นของคอร์ส แก้ที่หน้าคอร์ส</p>';
   },
 
   // ปุ่มเลือกคอร์ส กดสลับเปิดปิดได้ทีละอัน
@@ -266,6 +313,17 @@ const Trainers = {
           'ทหารไทยธนชาต', 'ออมสิน', 'ธ.ก.ส.', 'ยูโอบี', 'ซีไอเอ็มบี ไทย',
           'แลนด์ แอนด์ เฮ้าส์', 'เกียรตินาคินภัทร', 'อาคารสงเคราะห์'],
 
+  // ช่องที่เว้นว่างไม่ส่งไป หลังบ้านจะได้รู้ว่าให้ใช้ค่าตั้งต้นของคอร์ส
+  // ถ้าส่งเป็น 0 จะกลายเป็นสอนฟรี ซึ่งคนละความหมายกับเว้นว่าง
+  readFees() {
+    const out = {};
+    document.querySelectorAll('[data-fee]').forEach(i => {
+      const v = String(i.value).trim();
+      if (v !== '') out[i.dataset.fee] = Number(v);
+    });
+    return out;
+  },
+
   async submit(id, active) {
     const payload = {
       id,
@@ -279,6 +337,7 @@ const Trainers = {
       bankName:        People.val('t_bankName'),
       bankAccountNo:   People.val('t_bankAccountNo'),
       bankAccountName: People.val('t_bankAccountName'),
+      fees:            Trainers.readFees(),
     };
 
     if (!payload.name) { UI.toast('กรอกชื่อผู้ฝึกสอนก่อน', 'error'); return; }
