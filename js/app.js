@@ -35,6 +35,8 @@ const NAV = {
     { id: 'courses',  label: 'คอร์สของเรา',   icon: 'book' },
     { id: 'activity', label: 'บันทึกการเรียน', icon: 'note', short: 'บันทึก' },
     { id: 'people',   label: 'ข้อมูลบุตรหลาน', icon: 'people', short: 'บุตรหลาน' },
+    // ผู้ปกครองดูยอดค้างและประวัติการจ่ายของตัวเองได้ แต่แก้ไขอะไรไม่ได้
+    { id: 'finance',  label: 'ค่าเรียน',       icon: 'wallet' },
   ],
 };
 
@@ -55,6 +57,17 @@ const App = {
 
   // ── เริ่มต้นแอป ───────────────────────────────────────────
   boot() {
+    // มาจากลิงก์ยืนยันอีเมลหรือลิงก์ลืมรหัสผ่าน ให้ตั้งรหัสก่อน
+    // แม้จะมี session ค้างอยู่ในเครื่อง เพราะคนที่เปิดลิงก์อาจเป็นคนละคน
+    // สองลิงก์ใช้หน้าเดียวกัน ต่างแค่ชื่อพารามิเตอร์ ตัวหลังบ้านเป็นคนบอกว่าโหมดไหน
+    const q      = new URLSearchParams(location.search);
+    const invite = q.get('invite') || q.get('reset');
+    if (invite) {
+      Store.clear();
+      Auth.renderInvite(invite);
+      return;
+    }
+
     if (Store.get('token')) {
       this.start();
     } else {
@@ -78,11 +91,18 @@ const App = {
         ${ICON[item.icon]}<span>${item.label}</span>
       </button>`).join('');
 
-    // แท็บล่างแสดงสี่รายการแรกเท่านั้น ที่เหลือเข้าถึงผ่านหน้าภาพรวม
-    const tabs = items.slice(0, 4).map(item => `
+    // แท็บล่างของมือถือใส่ได้สี่ช่อง ถ้าเมนูมีเกินสี่ ช่องสุดท้ายต้องเป็น "เพิ่มเติม"
+    // ไม่งั้นหน้าที่ห้าขึ้นไปจะเข้าไม่ได้เลยบนมือถือ เพราะไม่มีแถบข้างให้กด
+    const extra = items.length > 4;
+    const shown = extra ? items.slice(0, 3) : items;
+
+    const tabs = shown.map(item => `
       <button class="tabbar__item" data-page="${item.id}">
         ${ICON[item.icon]}<span>${item.short || item.label}</span>
-      </button>`).join('');
+      </button>`).join('') + (extra ? `
+      <button class="tabbar__item" id="moreTab">
+        ${ICON.menu}<span>เพิ่มเติม</span>
+      </button>` : '');
 
     document.getElementById('root').innerHTML = `
       <div class="shell">
@@ -130,6 +150,10 @@ const App = {
     });
     document.getElementById('accountBtn').onclick = () => App.openAccount();
     document.getElementById('railUser').onclick    = () => App.openAccount();
+
+    const moreTab = document.getElementById('moreTab');
+    if (moreTab) moreTab.onclick = () => App.openMenu(items);
+
     document.getElementById('syncBtn').onclick     = () => Sync.now();
     Sync.start();
   },
@@ -224,6 +248,28 @@ const App = {
         UI.closeSheet();
       },
     });
+  },
+
+  // ── เมนูทั้งหมดบนมือถือ ───────────────────────────────────
+  // แท็บล่างใส่ได้สี่ช่อง เมนูที่เหลือมารวมกันที่นี่
+  // ขึ้นทุกรายการไม่ใช่เฉพาะที่เหลือ เพราะคนกดหาของมักไม่ทันคิดว่ารายการไหนอยู่แท็บล่างแล้ว
+  openMenu(items) {
+    UI.openSheet(`
+      <div class="sheet__title">เมนู</div>
+      <div class="menulist">
+        ${items.map(i => `
+          <button class="menulink${App.current === i.id ? ' is-on' : ''}" data-go="${i.id}">
+            ${ICON[i.icon]}<span>${UI.esc(i.label)}</span>
+          </button>`).join('')}
+      </div>
+      <div class="sheet__actions">
+        <button class="btn btn--ghost btn--block" data-act="close">ปิด</button>
+      </div>`);
+
+    document.querySelectorAll('[data-go]').forEach(b => {
+      b.onclick = () => { UI.closeSheet(); App.go(b.dataset.go); };
+    });
+    People.bindSheet({ close: () => UI.closeSheet() });
   },
 
   // ── เปลี่ยนหน้า ───────────────────────────────────────────

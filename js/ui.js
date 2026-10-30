@@ -157,6 +157,8 @@ const UI = {
 
 // ── ไอคอน (SVG ในตัว ไม่พึ่งไลบรารีภายนอก) ──────────────────
 const ICON = {
+  // สามขีดแนวนอน ใช้กับแท็บ "เพิ่มเติม" บนมือถือ
+  menu:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>',
   // เครื่องหมายแบรนด์ — หลังคาบ้านกับหน้าต่างสี่ช่อง วาดตามโลโก้
   brand:    '<svg viewBox="0 0 28 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 14.6L14 4l11.4 10.6"/><g fill="currentColor" stroke="none"><rect x="10.5" y="11.2" width="3.1" height="3.1" rx="0.9"/><rect x="14.4" y="11.2" width="3.1" height="3.1" rx="0.9"/><rect x="10.5" y="15.1" width="3.1" height="3.1" rx="0.9"/><rect x="14.4" y="15.1" width="3.1" height="3.1" rx="0.9"/></g></svg>',
   home:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 21v-7h6v7"/></svg>',
