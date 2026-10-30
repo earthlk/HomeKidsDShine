@@ -1997,3 +1997,74 @@ button.rail__user:hover .rail__more { color: var(--clay); }
 .menulink:hover { background: var(--cream); }
 .menulink.is-on { background: var(--clay-tint); color: var(--clay-dark); }
 .menulink.is-on svg { color: var(--clay); }
+
+/* ════════════════════════════════════════════════════════════
+   Phase 6 (รอบสาม) — หัวหน้าจอบรรทัดเดียว
+   ════════════════════════════════════════════════════════════ */
+
+/* ช่วงวันที่อยู่ซ้าย ปุ่มสลับฝั่งชิดขวาสุด ประหยัดพื้นที่แนวตั้งไปหนึ่งแถว */
+.fhead {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+.fhead__left { flex: 1; min-width: 0; }
+.fhead__seg { margin-bottom: 0; flex-shrink: 0; }
+
+/* ช่องวันที่แบบกะทัดรัด ไม่มีป้ายกำกับแยกบรรทัด ใช้ aria-label แทน
+   .field__input กว้าง 100% ตามค่าตั้งต้น ต้องทับเป็นความกว้างพอดีเนื้อหา
+   ไม่งั้นแต่ละช่องกินเต็มบรรทัดแล้วหัวหน้าจอยาวเป็นสี่บรรทัด */
+.daterange__to { font-size: var(--t-sm); color: var(--mist); }
+.daterange .field__input[type='date'] {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  font-size: var(--t-sm);
+}
+.daterange__sep {
+  width: 1px;
+  height: 20px;
+  background: var(--line);
+  margin: 0 var(--sp-1);
+}
+.chipbtn--sm { padding: 5px 12px; font-size: var(--t-xs); }
+
+/* ── แถบตัวกรอง — แท็บซ้าย ช่องเลือกคนขวา ──────────────────── */
+.filterbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.chipbar--tabs { margin-bottom: 0; }
+
+/* ช่องเลือกผู้ฝึกสอน ใช้แทนปุ่มเรียงกัน เพราะครูสิบกว่าคนปุ่มจะล้นหลายบรรทัด */
+.whosel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+.whosel__k { font-size: var(--t-xs); color: var(--mist); white-space: nowrap; }
+.whosel .field__input {
+  padding: 7px 10px;
+  font-size: var(--t-sm);
+  min-width: 190px;
+}
+
+.statbar--2 { grid-template-columns: repeat(2, 1fr); }
+
+@media (max-width: 768px) {
+  .fhead__left:empty { display: none; }
+  .fhead__seg { width: 100%; justify-content: center; }
+  .fhead__seg .segbar__btn { flex: 1; justify-content: center; }
+  .daterange .field__input[type='date'] { flex: 1; min-width: 0; }
+  .statbar--2 { grid-template-columns: 1fr; }
+  .filterbar { flex-direction: column; align-items: stretch; }
+  .whosel { justify-content: space-between; }
+  .whosel .field__input { flex: 1; min-width: 0; }
+}

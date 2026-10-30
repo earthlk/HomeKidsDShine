@@ -19,7 +19,7 @@ const Finance = {
 
   // ── ฝั่งจ่ายค่าสอน ────────────────────────────────────────
   pay:   null,
-  tab:   'due',       // due = ค้างจ่าย | paid = เข้ารอบแล้ว | rounds = รอบจ่าย
+  tab:   'due',       // due = ค้างจ่าย | paid = จ่ายแล้ว
   from:  '',
   to:    '',
   who:   'all',       // กรองตามผู้ฝึกสอน
@@ -56,19 +56,20 @@ const Finance = {
       this.to   = r.to;
     }
 
-    el.innerHTML = UI.loading('กำลังรวมยอด');
-
-    const shell = (body) => `
-      ${this.role === 'admin' ? `
-        <div class="segbar">
-          <button class="segbar__btn${this.side === 'income' ? ' is-on' : ''}"
-            data-side="income">รับเงิน</button>
-          <button class="segbar__btn${this.side === 'pay' ? ' is-on' : ''}"
-            data-side="pay">จ่ายค่าสอน</button>
-        </div>` : ''}
-      <div id="fBody">${body}</div>`;
-
-    el.innerHTML = shell(UI.loading('กำลังรวมยอด'));
+    // หัวหน้าจอบรรทัดเดียว — ช่วงวันที่อยู่ซ้าย ปุ่มสลับฝั่งอยู่ขวาสุด
+    // ช่องวันที่ใช้กับรายการที่จ่ายแล้วเท่านั้น จึงฝากไว้ให้ฝั่งจ่ายค่าสอนเติมเอง
+    el.innerHTML = `
+      <div class="fhead">
+        <div class="fhead__left" id="fHeadLeft"></div>
+        ${this.role === 'admin' ? `
+          <div class="segbar fhead__seg">
+            <button class="segbar__btn${this.side === 'income' ? ' is-on' : ''}"
+              data-side="income">รับเงิน</button>
+            <button class="segbar__btn${this.side === 'pay' ? ' is-on' : ''}"
+              data-side="pay">จ่ายค่าสอน</button>
+          </div>` : ''}
+      </div>
+      <div id="fBody">${UI.loading('กำลังรวมยอด')}</div>`;
 
     el.querySelectorAll('[data-side]').forEach(b => {
       b.onclick = () => {
@@ -346,36 +347,50 @@ const Finance = {
   paintPay(box) {
     const admin = !this.pay.isTrainer;
 
+    // ช่องวันที่ไปอยู่บรรทัดเดียวกับปุ่มสลับฝั่ง ประหยัดพื้นที่แนวตั้ง
+    // และใช้กับแท็บจ่ายแล้วเท่านั้น ค้างจ่ายต้องเห็นทั้งหมดเสมอ
+    const head = document.getElementById('fHeadLeft');
+    if (head) {
+      head.innerHTML = `
+        <div class="daterange${this.tab === 'due' ? ' is-hidden' : ''}" id="fRange">
+          <input class="field__input" type="date" id="f_from" value="${UI.esc(this.from)}"
+            aria-label="ตั้งแต่วันที่">
+          <span class="daterange__to">ถึง</span>
+          <input class="field__input" type="date" id="f_to" value="${UI.esc(this.to)}"
+            aria-label="ถึงวันที่">
+          <span class="daterange__sep"></span>
+          ${this.quickRanges().map(([label, from, to]) =>
+            `<button class="chipbtn chipbtn--sm${this.from === from && this.to === to ? ' is-on' : ''}"
+              data-range="${from}|${to}">${label}</button>`).join('')}
+        </div>`;
+
+      // เลือกวันแล้วโหลดเลย ไม่ต้องมีปุ่มยืนยันอีกชั้น
+      // ช่องวันที่ยิง change เมื่อได้วันครบแล้วเท่านั้น จึงไม่โหลดรัว ๆ ระหว่างพิมพ์
+      ['f_from', 'f_to'].forEach(id => {
+        head.querySelector('#' + id).onchange = () => Finance.applyRange();
+      });
+
+      head.querySelectorAll('[data-range]').forEach(b => {
+        b.onclick = () => {
+          const bits = b.dataset.range.split('|');
+          Finance.from = bits[0];
+          Finance.to   = bits[1];
+          Finance.reloadPay();
+        };
+      });
+    }
+
     box.innerHTML = `
-      <div class="toolbar">
-        <div class="daterange">
-          <label class="daterange__item">
-            <span class="daterange__k">ตั้งแต่</span>
-            <input class="field__input" type="date" id="f_from" value="${UI.esc(this.from)}">
-          </label>
-          <label class="daterange__item">
-            <span class="daterange__k">ถึง</span>
-            <input class="field__input" type="date" id="f_to" value="${UI.esc(this.to)}">
-          </label>
-          <button class="btn btn--ghost btn--sm" data-act="apply" data-busy="กำลังโหลด">ดูช่วงนี้</button>
-        </div>
-      </div>
-
-      <div class="quickpick">
-        ${this.quickRanges().map(([label, from, to]) =>
-          `<button class="chipbtn${this.from === from && this.to === to ? ' is-on' : ''}"
-            data-range="${from}|${to}">${label}</button>`).join('')}
-      </div>
-
-      ${admin ? this.whoBar() : ''}
-
       ${this.paySummary()}
 
-      <div class="chipbar">
-        ${[['due', 'ค้างจ่าย'], ['paid', 'เข้ารอบแล้ว'], ['rounds', 'รอบจ่าย']]
-          .map(([v, label]) => `<button class="chipbtn${this.tab === v ? ' is-on' : ''}"
-            data-tab="${v}">${label}
-            <span class="chipbtn__n">${this.countOf(v)}</span></button>`).join('')}
+      <div class="filterbar">
+        <div class="chipbar chipbar--tabs">
+          ${[['due', 'ค้างจ่าย'], ['paid', 'จ่ายแล้ว']]
+            .map(([v, label]) => `<button class="chipbtn${this.tab === v ? ' is-on' : ''}"
+              data-tab="${v}">${label}
+              <span class="chipbtn__n">${this.countOf(v)}</span></button>`).join('')}
+        </div>
+        ${admin ? this.whoPicker() : ''}
       </div>
 
       ${admin ? `<input class="field__input toolbar__search" id="f_q" type="search"
@@ -384,39 +399,23 @@ const Finance = {
       <div id="fList"></div>
       <div id="fBar"></div>`;
 
-    box.querySelector('[data-act="apply"]').onclick = (e) =>
-      UI.run(e.currentTarget, 'กำลังโหลด', () => Finance.applyRange());
-
     if (admin) {
       box.querySelector('#f_q').addEventListener('input', e => {
         Finance.query = e.target.value;
         Finance.paintList();
       });
-      box.querySelectorAll('[data-who]').forEach(b => {
-        b.onclick = () => {
-          Finance.who = b.dataset.who;
-          Finance.picked = {};          // เปลี่ยนคนแล้วของที่ติ๊กไว้ใช้ไม่ได้
-          Finance.paintPay(box);
-        };
-      });
-    }
-
-    box.querySelectorAll('[data-range]').forEach(b => {
-      b.onclick = () => {
-        const bits = b.dataset.range.split('|');
-        Finance.from = bits[0];
-        Finance.to   = bits[1];
-        Finance.picked = {};
-        Finance.reloadPay();
+      box.querySelector('#f_who').onchange = (e) => {
+        Finance.who = e.target.value;
+        Finance.picked = {};          // เปลี่ยนคนแล้วของที่ติ๊กไว้ใช้ไม่ได้
+        Finance.paintPay(box);
       };
-    });
+    }
 
     box.querySelectorAll('[data-tab]').forEach(b => {
       b.onclick = () => {
         Finance.tab = b.dataset.tab;
-        box.querySelectorAll('[data-tab]').forEach(x =>
-          x.classList.toggle('is-on', x.dataset.tab === Finance.tab));
-        Finance.paintList();
+        Finance.picked = {};
+        Finance.paintPay(box);        // วาดใหม่ทั้งฝั่ง เพราะช่องวันที่ต้องซ่อน/โผล่ตามแท็บ
       };
     });
 
@@ -424,25 +423,29 @@ const Finance = {
   },
 
   // ── ตัวกรองผู้ฝึกสอน ──────────────────────────────────────
-  // ต้องเลือกคนก่อนถึงจะติ๊กเลือกคาบได้ เพราะรอบจ่ายหนึ่งรอบเป็นของคนเดียว
-  // บังคับด้วยโครงหน้าจอแบบนี้ ดีกว่าปล่อยให้ติ๊กข้ามคนแล้วค่อยขึ้นข้อความเตือน
-  whoBar() {
+  // ใช้ช่องเลือกไม่ใช่ปุ่มเรียงกัน เพราะศูนย์ที่มีครูสิบกว่าคนปุ่มจะล้นหลายบรรทัด
+  // ต้องเลือกคนก่อนถึงจะติ๊กเลือกคาบได้ เพราะการจ่ายหนึ่งครั้งเป็นของคนเดียว
+  whoPicker() {
     const all = this.pay.trainers || [];
-    const due = this.classes('due');
+    const due = this.classes();
 
     const n = {};
-    due.forEach(c => { n[c.trainerId] = (n[c.trainerId] || 0) + 1; });
+    ((this.pay && this.pay.classes) || []).forEach(c => {
+      n[c.trainerId] = (n[c.trainerId] || 0) + 1;
+    });
 
     return `
-      <div class="chipbar chipbar--who">
-        <button class="chipbtn${this.who === 'all' ? ' is-on' : ''}" data-who="all">
-          ทุกคน <span class="chipbtn__n">${due.length}</span></button>
-        ${all.map(t => `
-          <button class="chipbtn${this.who === String(t.id) ? ' is-on' : ''}"
-            data-who="${UI.esc(t.id)}">
-            ${UI.esc(t.name)}<span class="chipbtn__n">${n[t.id] || 0}</span>
-          </button>`).join('')}
-      </div>`;
+      <label class="whosel">
+        <span class="whosel__k">ผู้ฝึกสอน</span>
+        <select class="field__input" id="f_who">
+          <option value="all"${this.who === 'all' ? ' selected' : ''}>
+            ทุกคน (ค้าง ${due.length} คาบ)</option>
+          ${all.map(t => `
+            <option value="${UI.esc(t.id)}"${this.who === String(t.id) ? ' selected' : ''}>
+              ${UI.esc(t.name)}${n[t.id] ? ' — ค้าง ' + n[t.id] + ' คาบ' : ''}
+            </option>`).join('')}
+        </select>
+      </label>`;
   },
 
   quickRanges() {
@@ -462,68 +465,64 @@ const Finance = {
   },
 
   paySummary() {
-    const due  = this.classes('due');
-    const paid = this.classes('paid');
-    const sum  = (list) => list.reduce((n, c) => n + Number(c.fee || 0), 0);
-    const waiting = (this.pay.payouts || []).filter(r => r.status === 'pending');
+    const due  = this.classes();
+    const sumD = due.reduce((n, c) => n + Number(c.fee || 0), 0);
+    const paid = this.rounds();
+    const sumP = paid.reduce((n, r) => n + Number(r.amount || 0), 0);
+    const kids = paid.reduce((n, r) => n + Number(r.classCount || 0), 0);
 
     return `
-      <div class="statbar">
+      <div class="statbar statbar--2">
         <div class="stat stat--warn">
-          <span class="stat__num">${UI.money(sum(due))}</span>
-          <span class="stat__k">ค้างจ่าย · ${due.length} คาบ</span>
+          <span class="stat__num">${UI.money(sumD)}</span>
+          <span class="stat__k">ค้างจ่ายทั้งหมด · ${due.length} คาบ</span>
         </div>
         <div class="stat">
-          <span class="stat__num">${UI.money(sum(paid))}</span>
-          <span class="stat__k">เข้ารอบแล้ว · ${paid.length} คาบ</span>
-        </div>
-        <div class="stat">
-          <span class="stat__num">${waiting.length}</span>
-          <span class="stat__k">รอบที่ยังไม่ได้โอน</span>
+          <span class="stat__num">${UI.money(sumP)}</span>
+          <span class="stat__k">จ่ายแล้วในช่วงนี้ · ${kids} คาบ</span>
         </div>
       </div>`;
   },
 
-  // คัดตามแท็บ แล้วกรองตามผู้ฝึกสอนที่เลือกไว้
-  classes(tab) {
-    let all = (this.pay && this.pay.classes) || [];
-    if (this.who !== 'all') all = all.filter(c => String(c.trainerId) === String(this.who));
-    if (tab === 'due')  return all.filter(c => !c.payoutId);
-    if (tab === 'paid') return all.filter(c => !!c.payoutId);
-    return all;
+  // คาบที่หลังบ้านส่งมาคือคาบที่ยังไม่ได้จ่ายทั้งหมดอยู่แล้ว ไม่ตัดตามช่วงวัน
+  // ที่นี่เหลือแค่กรองตามผู้ฝึกสอนที่เลือกไว้
+  classes() {
+    const all = (this.pay && this.pay.classes) || [];
+    if (this.who === 'all') return all;
+    return all.filter(c => String(c.trainerId) === String(this.who));
+  },
+
+  // รายการที่จ่ายแล้วในช่วงวันที่เลือก
+  rounds() {
+    const all = (this.pay && this.pay.payouts) || [];
+    if (this.who === 'all') return all;
+    return all.filter(r => String(r.trainerId) === String(this.who));
   },
 
   countOf(tab) {
-    if (tab === 'rounds') {
-      const r = (this.pay && this.pay.payouts) || [];
-      return this.who === 'all' ? r.length
-        : r.filter(x => String(x.trainerId) === String(this.who)).length;
-    }
-    return this.classes(tab).length;
+    return tab === 'paid' ? this.rounds().length : this.classes().length;
   },
 
   paintList() {
     const box = document.getElementById('fList');
     if (!box) return;
 
-    if (this.tab === 'rounds') { this.paintRounds(box); this.paintBar(); return; }
+    if (this.tab === 'paid') { this.paintRounds(box); this.paintBar(); return; }
 
     const q = this.query.trim().toLowerCase();
-    const list = this.classes(this.tab).filter(c => !q ||
+    const list = this.classes().filter(c => !q ||
       [c.trainerName, c.courseName, (c.children || []).join(' ')]
         .some(v => String(v || '').toLowerCase().indexOf(q) >= 0));
 
     if (!list.length) {
-      box.innerHTML = this.tab === 'due'
-        ? UI.empty('ไม่มีคาบค้างจ่าย',
-            'ช่วงวันที่นี้จ่ายครบแล้ว หรือยังไม่มีคาบที่บันทึกกิจกรรมเรียบร้อย')
-        : UI.empty('ยังไม่มีคาบที่เข้ารอบจ่าย', 'ปิดรอบจ่ายแล้วคาบจะย้ายมาอยู่ตรงนี้');
+      box.innerHTML = UI.empty('ไม่มีคาบค้างจ่าย',
+        'จ่ายครบทุกคาบแล้ว หรือยังไม่มีคาบที่บันทึกกิจกรรมเรียบร้อย');
       this.paintBar();
       return;
     }
 
     // ติ๊กเลือกได้เฉพาะตอนดูคาบค้างจ่ายของผู้สอนคนเดียว
-    const canPick = !this.pay.isTrainer && this.tab === 'due' && this.who !== 'all';
+    const canPick = !this.pay.isTrainer && this.who !== 'all';
 
     box.innerHTML = (canPick ? `
       <div class="pickhead">
@@ -532,7 +531,7 @@ const Finance = {
             ${list.every(c => this.picked[c.key]) ? 'checked' : ''}>
           <span>เลือกทั้งหมด ${list.length} คาบ</span>
         </label>
-      </div>` : (!this.pay.isTrainer && this.tab === 'due' ? `
+      </div>` : (!this.pay.isTrainer ? `
       <p class="fhint fhint--lead">เลือกผู้ฝึกสอนด้านบนก่อน แล้วจะติ๊กเลือกคาบที่จะจ่ายได้</p>` : ''))
       + '<div class="flist">' + list.map(c => `
       <article class="frow2${canPick ? ' frow2--pick' : ''}${
@@ -593,7 +592,7 @@ const Finance = {
       return;
     }
 
-    const chosen = this.classes('due').filter(c => this.picked[c.key]);
+    const chosen = this.classes().filter(c => this.picked[c.key]);
     const total  = chosen.reduce((n, c) => n + Number(c.fee || 0), 0);
     const name   = (this.pay.trainers || [])
       .filter(t => String(t.id) === String(this.who))
@@ -607,7 +606,7 @@ const Finance = {
         </div>
         <div class="pickbar__act">
           <button class="btn btn--ghost btn--sm" data-act="clear">ล้าง</button>
-          <button class="btn btn--primary" data-act="close" data-busy="กำลังปิดรอบ">ปิดรอบจ่าย</button>
+          <button class="btn btn--primary" data-act="close" data-busy="กำลังเปิด">จ่ายค่าสอน</button>
         </div>
       </div>`;
 
@@ -616,13 +615,14 @@ const Finance = {
       Finance.paintList();
     };
     bar.querySelector('[data-act="close"]').onclick = (e) =>
-      UI.run(e.currentTarget, 'กำลังปิดรอบ', () => Finance.confirmPayout(chosen, total, name));
+      UI.run(e.currentTarget, 'กำลังเปิด', () => Finance.confirmPayout(chosen, total, name));
   },
 
-  // ── ยืนยันก่อนปิดรอบ ──────────────────────────────────────
+  // ── จ่ายค่าสอน ────────────────────────────────────────────
+  // ติ๊กเลือกแล้วจ่ายจบในขั้นตอนเดียว ไม่มีสถานะรอโอนคั่นกลาง
   confirmPayout(chosen, total, name) {
     UI.openSheet(`
-      <div class="sheet__title">ปิดรอบจ่ายค่าสอน</div>
+      <div class="sheet__title">จ่ายค่าสอน</div>
       <p class="sheet__sub">${UI.esc(name)} · ${chosen.length} คาบ</p>
 
       <div class="paysum">
@@ -640,17 +640,28 @@ const Finance = {
           </div>`).join('')}
       </div>
 
-      ${People.finput('p_note', 'หมายเหตุ', '', 'เช่น ค่าสอนงวดแรกเดือนตุลาคม')}
+      ${People.fselect('p_method', 'วิธีจ่าย',
+        [['transfer', 'โอนเงิน'], ['cash', 'เงินสด']], 'transfer')}
+      ${People.finput('p_ref', 'เลขอ้างอิง', '', 'เลขรายการจากสลิป')}
+      ${People.finput('p_note', 'หมายเหตุ', '', 'เช่น ค่าสอนครึ่งเดือนแรก')}
 
       <div class="notice notice--info">
-        ปิดรอบแล้วยอดจะถูกตรึงไว้ ถ้าแก้อัตราค่าสอนทีหลัง ยอดรอบนี้จะไม่เปลี่ยนตาม
-        รอบที่ยังไม่ได้โอนยกเลิกได้
+        บันทึกแล้วยอดจะถูกตรึงไว้ ถ้าแก้อัตราค่าสอนทีหลัง ยอดรายการนี้จะไม่เปลี่ยนตาม
+        ถ้าจ่ายผิดให้ยกเลิกรายการ คาบจะกลับไปอยู่ในยอดค้างจ่าย
       </div>
 
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
-        <button class="btn btn--primary" data-act="save" data-busy="กำลังปิดรอบ">ปิดรอบ</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึกการจ่าย</button>
       </div>`);
+
+    const method = document.getElementById('p_method');
+    const sync = () => {
+      const ref = document.getElementById('p_ref');
+      if (ref) ref.closest('.field').classList.toggle('is-hidden', method.value === 'cash');
+    };
+    method.onchange = sync;
+    sync();
 
     People.bindSheet({
       close: () => UI.closeSheet(),
@@ -666,29 +677,28 @@ const Finance = {
     const res = await API.call('createPayout', {
       trainerId:  this.who,
       sessionIds: sessionIds,
+      method:     People.val('p_method'),
+      reference:  People.val('p_ref'),
       note:       People.val('p_note'),
     });
     if (!res.ok) { UI.toast(res.message, 'error'); return; }
 
     UI.closeSheet();
     this.picked = {};
-    this.tab = 'rounds';
+    this.tab = 'paid';
     await this.reloadPay();
-    UI.toast('ปิดรอบของ' + res.data.trainerName + ' แล้ว ' +
+    UI.toast('จ่ายค่าสอนให้' + res.data.trainerName + ' แล้ว ' +
              res.data.classCount + ' คาบ ' + UI.money(res.data.amount) + ' บาท');
   },
 
-  // ── รายการรอบจ่าย ─────────────────────────────────────────
+  // ── รายการที่จ่ายแล้ว ─────────────────────────────────────
   paintRounds(box) {
-    let rounds = (this.pay.payouts || []);
-    if (this.who !== 'all') {
-      rounds = rounds.filter(r => String(r.trainerId) === String(this.who));
-    }
+    const rounds = this.rounds();
 
     if (!rounds.length) {
-      box.innerHTML = UI.empty('ยังไม่มีรอบจ่ายในช่วงนี้',
+      box.innerHTML = UI.empty('ยังไม่มีการจ่ายในช่วงวันที่นี้',
         this.pay.isTrainer
-          ? 'เมื่อศูนย์ปิดรอบจ่ายแล้ว รายการจะขึ้นที่นี่'
+          ? 'เมื่อศูนย์จ่ายค่าสอนแล้ว รายการจะขึ้นที่นี่ ลองขยายช่วงวันที่ด้านบน'
           : 'เลือกผู้ฝึกสอนแล้วติ๊กคาบที่จะจ่าย จากแท็บค้างจ่าย');
       return;
     }
@@ -697,21 +707,20 @@ const Finance = {
       <button class="prow" data-payout="${UI.esc(r.id)}">
         <span class="prow__main">
           <span class="prow__who">
-            ${this.pay.isTrainer ? 'รอบ' : UI.esc(r.trainerName)}
-            ${UI.esc(UI.thaiDate(r.periodStart, 'short'))} – ${UI.esc(UI.thaiDate(r.periodEnd, 'short'))}
+            ${this.pay.isTrainer ? '' : UI.esc(r.trainerName) + ' · '}${
+            UI.esc(UI.thaiDate(r.periodStart, 'short'))}${
+            r.periodStart === r.periodEnd ? ''
+              : ' – ' + UI.esc(UI.thaiDate(r.periodEnd, 'short'))}
           </span>
           <span class="prow__meta">
-            ${r.classCount} คาบ
-            ${r.status === 'paid' && r.paidAt
-              ? ' · โอน ' + UI.esc(UI.thaiDate(r.paidAt, 'short')) : ''}
+            ${r.classCount} คาบ · ${UI.esc(this.METHOD[r.method] || r.method)}
+            ${r.paidAt ? ' · จ่าย ' + UI.esc(UI.thaiDate(r.paidAt, 'short')) : ''}
             ${r.reference ? ' · อ้างอิง ' + UI.esc(r.reference) : ''}
           </span>
         </span>
         <span class="prow__right">
           <span class="prow__amt">${UI.money(r.amount)}</span>
-          ${r.status === 'paid'
-            ? '<span class="pchip pchip--ok">โอนแล้ว</span>'
-            : '<span class="pchip pchip--warn">รอโอน</span>'}
+          <span class="pchip pchip--ok">จ่ายแล้ว</span>
         </span>
       </button>`).join('') + '</div>';
 
@@ -730,26 +739,25 @@ const Finance = {
     const r     = res.data.payout;
     const list  = res.data.classes || [];
     const admin = !this.pay.isTrainer;
-    const paid  = r.status === 'paid';
 
     UI.fillSheet(`
-      <div class="sheet__title">รอบจ่ายค่าสอน</div>
+      <div class="sheet__title">รายการจ่ายค่าสอน</div>
       <p class="sheet__sub">
         ${UI.esc(r.trainerName)} ·
-        ${UI.esc(UI.thaiDate(r.periodStart))} ถึง ${UI.esc(UI.thaiDate(r.periodEnd))}
+        ${UI.esc(UI.thaiDate(r.periodStart))}${
+        r.periodStart === r.periodEnd ? '' : ' ถึง ' + UI.esc(UI.thaiDate(r.periodEnd))}
       </p>
 
       <div class="paysum">
         <span class="paysum__amt">${UI.money(r.amount)}</span>
         <span class="paysum__k">บาท · ${r.classCount} คาบ</span>
-        ${paid ? '<span class="pchip pchip--ok">โอนแล้ว</span>'
-               : '<span class="pchip pchip--warn">รอโอน</span>'}
+        <span class="pchip pchip--ok">จ่ายแล้ว</span>
       </div>
 
       ${People.section('การจ่าย', [
         ['วิธีจ่าย', this.METHOD[r.method] || ''],
         ['เลขอ้างอิง', r.reference],
-        ['วันที่โอน', r.paidAt ? UI.thaiDate(r.paidAt) : ''],
+        ['วันที่จ่าย', r.paidAt ? UI.thaiDate(r.paidAt) : ''],
         ['หมายเหตุ', r.note],
       ])}
 
@@ -775,21 +783,22 @@ const Finance = {
         </div>
       </div>
 
-      ${admin && !paid ? `
+      ${admin ? `
         <div class="dsection">
-          <h3 class="dsection__title">บันทึกการโอน</h3>
+          <h3 class="dsection__title">แก้ไขรายละเอียดการจ่าย</h3>
           ${People.fselect('y_method', 'วิธีจ่าย',
-            [['transfer', 'โอนเงิน'], ['cash', 'เงินสด']], 'transfer')}
-          ${People.finput('y_ref', 'เลขอ้างอิง', '', 'เลขรายการจากสลิป')}
+            [['transfer', 'โอนเงิน'], ['cash', 'เงินสด']], r.method || 'transfer')}
+          ${People.finput('y_ref', 'เลขอ้างอิง', r.reference, 'เลขรายการจากสลิป')}
           ${People.finput('y_note', 'หมายเหตุ', r.note, '')}
+          <p class="fhint">แก้ได้เฉพาะรายละเอียด ถ้าจ่ายผิดคนหรือผิดคาบให้ยกเลิกรายการแล้วทำใหม่</p>
         </div>` : ''}
 
       <div class="sheet__actions">
-        ${admin && !paid ? `<button class="btn btn--ghost" data-act="cancel"
-          data-busy="กำลังยกเลิก">ยกเลิกรอบ</button>` : ''}
+        ${admin ? `<button class="btn btn--ghost" data-act="cancel"
+          data-busy="กำลังยกเลิก">ยกเลิกรายการ</button>` : ''}
         <button class="btn btn--ghost" data-act="close">ปิด</button>
-        ${admin && !paid ? `<button class="btn btn--primary" data-act="pay"
-          data-busy="กำลังบันทึก">บันทึกว่าโอนแล้ว</button>` : ''}
+        ${admin ? `<button class="btn btn--primary" data-act="pay"
+          data-busy="กำลังบันทึก">บันทึกการแก้ไข</button>` : ''}
       </div>`);
 
     const method = document.getElementById('y_method');
@@ -820,27 +829,30 @@ const Finance = {
 
     UI.closeSheet();
     await this.reloadPay();
-    UI.toast('บันทึกว่าโอนแล้ว');
+    UI.toast('แก้ไขรายละเอียดแล้ว');
   },
 
   async cancelPayout(id, r) {
-    if (!confirm('ยกเลิกรอบนี้ของ' + r.trainerName + '?\n' +
-      r.classCount + ' คาบจะกลับไปอยู่ในรายการค้างจ่าย')) return;
+    if (!confirm('ยกเลิกรายการจ่ายนี้ของ' + r.trainerName + '?\n' +
+      r.classCount + ' คาบ ' + UI.money(r.amount) + ' บาท จะกลับไปอยู่ในยอดค้างจ่าย')) return;
 
     const res = await API.call('cancelPayout', { id });
     if (!res.ok) { UI.toast(res.message, 'error'); return; }
 
     UI.closeSheet();
+    this.tab = 'due';
     await this.reloadPay();
-    UI.toast('ยกเลิกรอบแล้ว คาบกลับไปอยู่ในรายการค้างจ่าย');
+    UI.toast('ยกเลิกแล้ว คาบกลับไปอยู่ในยอดค้างจ่าย');
   },
 
   async applyRange() {
     const from = People.val('f_from');
     const to   = People.val('f_to');
 
-    if (!from || !to) { UI.toast('เลือกวันที่ให้ครบก่อน', 'error'); return; }
+    // ยังกรอกไม่ครบ ปล่อยไว้เงียบ ๆ ไม่ต้องเตือน เพราะยังพิมพ์อยู่
+    if (!from || !to) return;
     if (to < from)    { UI.toast('วันสิ้นสุดต้องไม่ก่อนวันเริ่ม', 'error'); return; }
+    if (from === this.from && to === this.to) return;
 
     this.from = from;
     this.to   = to;
