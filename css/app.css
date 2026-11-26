@@ -2115,3 +2115,499 @@ button.rail__user:hover .rail__more { color: var(--clay); }
   color: var(--ink-soft);
   text-align: center;
 }
+
+/* ════════════════════════════════════════════════════════════
+   Phase 6.6 — การเงินสามหน้า
+   เพิ่มต่อท้ายตามกฎของโปรเจ็กต์ ไม่แก้ของเดิม
+
+   เปลี่ยนจากการ์ดใบ ๆ เรียงกันมาเป็นแถวในกรอบเดียวคั่นด้วยเส้นผม
+   เพราะงานของหน้าการเงินคือกวาดตาหายอดที่ต้องจัดการ
+   การ์ดที่มีช่องว่างรอบตัวทำให้เห็นทีละห้ารายการ แถวแบบนี้เห็นสิบกว่ารายการ
+   ════════════════════════════════════════════════════════════ */
+
+/* ── พื้นผิวที่เบราว์เซอร์วาดให้เอง ─────────────────────────── */
+/* ของพวกนี้มาพร้อมค่าตั้งต้นของเบราว์เซอร์ซึ่งไม่ได้เป็นสีของใคร
+   ดึงเข้ามาใช้สีแบรนด์ด้วย ไม่งั้นพอลากเลือกตัวเลขจะเจอน้ำเงินของระบบ */
+::selection { background: var(--clay-tint); color: var(--ink); }
+input, textarea, select { caret-color: var(--clay); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background-clip: content-box; background-color: var(--mist); }
+
+/* ── แถบยอดรวมบนสุด ────────────────────────────────────────── */
+/* กรอบเดียวแบ่งช่องด้วยเส้น ไม่ใช่การ์ดสามใบ
+   เพราะสามตัวเลขนี้อ่านเทียบกันเสมอ ไม่ได้อ่านแยกใบ */
+.lstrip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+.lstrip__i {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.lstrip__i:first-child { border-left: none; }
+.lstrip__i--alert { background: var(--coral-tint); }
+.lstrip__i--net { background: var(--line-soft); }
+.lstrip__k {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lstrip__v {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lstrip__v--warn { color: var(--honey); }
+.lstrip__v--in   { color: var(--sage); }
+.lstrip__v--out  { color: var(--coral); }
+.lstrip__n {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── แถบเครื่องมือเหนือรายการ ──────────────────────────────── */
+.ftools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.ftools--tight { margin-top: var(--sp-5); }
+/* ไม่ใส่ flex-wrap ตรงนี้ เพราะกล่อง flex ที่ตัดบรรทัดได้จะคิดความกว้างสูงสุดของตัวเอง
+   จากลูกที่กว้างที่สุด ไม่ใช่ผลรวม แล้วมันจะหดจนปุ่มตกบรรทัดทั้งที่ยังมีที่เหลือ
+   ให้ .ftools ข้างนอกเป็นคนตัดบรรทัดแทน */
+.ftools__right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ftools__q {
+  width: auto;
+  flex: 0 1 240px;
+  padding: 7px 10px;
+  font-size: var(--t-sm);
+}
+
+/* ── กรอบรายการ ────────────────────────────────────────────── */
+.irows {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+/* ── แถวรับเงิน ────────────────────────────────────────────── */
+.irow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-right: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+.irow:first-child { border-top: none; }
+.irow:hover { background: var(--cream); }
+.irow--alert { background: var(--coral-tint); }
+.irow--alert:hover { background: var(--coral-tint); }
+/* เส้นคั่นสีอ่อนจมหายไปบนพื้นสีชมพู ใช้สีหมึกจาง ๆ แทน
+   ไม่ใช้สีแดงเพราะเส้นแดงคาดกลางอ่านเหมือนการแจ้งเตือนอีกชั้น */
+.irow--alert + .irow--alert { border-top-color: rgba(61, 47, 34, 0.12); }
+
+.irow__open {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.irow__who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+.irow__who small,
+.irow__num small {
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ตัวเลขชิดขวาและใช้ตัวเลขความกว้างเท่ากัน
+   เพื่อให้หลักพันของทุกแถวตรงกันตอนกวาดตาลงมา */
+.irow__num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.irow__num b {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.irow__num--due b { color: var(--coral); }
+.irow__dash { color: var(--mist); }
+
+/* ไม่มีแถบสัดส่วนในแถวแล้ว ตัวเลขกับบรรทัด "ค้าง จาก 6,000" บอกครบกว่า
+   แถบกว้างหกสิบพิกเซลเทียบสัดส่วนด้วยตาไม่ได้อยู่ดี มันเลยเป็นแค่ขีดสีเขียว
+   แถบสัดส่วนยังอยู่ในกล่องรายละเอียด ซึ่งมีที่ให้มันยาวพอจะอ่านได้จริง */
+
+/* ปุ่มงานหลักอยู่บนแถวเลย ไม่ต้องเปิดกล่องก่อน
+   เพราะ "รับเงินมาแล้ว บันทึกหน่อย" เป็นงานที่ทำบ่อยที่สุดของหน้านี้ */
+.irow__act {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--clay);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.irow__act:hover { background: var(--clay-tint); border-color: var(--clay); }
+.irow__act:active { background: var(--clay-tint); }
+/* ที่ว่างแทนปุ่มในแถวที่ไม่มีอะไรให้ทำ กันคอลัมน์ตัวเลขเลื่อนไปมาระหว่างแถว */
+.irow__act--off {
+  display: block;
+  width: 61px;
+  height: 1px;
+  background: none;
+  border: none;
+  cursor: default;
+}
+
+/* ── แถวคาบและแถวรายการ ────────────────────────────────────── */
+.crow {
+  display: grid;
+  grid-template-columns: 62px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.crow:first-child { border-top: none; }
+.crow--pick,
+button.crow { cursor: pointer; }
+.crow--pick:hover,
+button.crow:hover { background: var(--cream); }
+.crow--pick { grid-template-columns: 20px 62px 1fr auto; }
+.crow--pick.is-picked { background: var(--clay-tint); }
+.crow--flat { cursor: default; }
+
+/* ช่องติ๊กวาดเอง เพราะ input จริงจะดูดคลิกไปจากตัวแถวทั้งแถว */
+.crow__box {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  background: var(--card);
+  position: relative;
+}
+.crow__box.is-on { background: var(--clay); border-color: var(--clay); }
+.crow__box.is-on::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--card);
+  border-bottom: 2px solid var(--card);
+  transform: rotate(-45deg);
+}
+
+.crow__when,
+.crow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.crow__when b {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.crow__main b {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crow__when small,
+.crow__main small {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crow__fee {
+  flex-shrink: 0;
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.crow__fee--in  { color: var(--sage); }
+.crow__fee--out { color: var(--coral); }
+
+/* ── แถบยอดในกล่อง ─────────────────────────────────────────── */
+/* แทนก้อนตัวเลขใหญ่กลางกล่อง ประหยัดความสูงไปราวครึ่ง
+   เพราะกล่องที่เลื่อนไม่จบคือเหตุผลหลักที่คนบอกว่าใช้งานยาก */
+.duebar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--line-soft);
+  border-radius: var(--r-md);
+  position: relative;
+  overflow: hidden;
+}
+.duebar--due { background: var(--coral-tint); }
+.duebar__k {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.duebar__v {
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.duebar--due .duebar__v { color: var(--coral); }
+.duebar__u {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  margin-left: auto;
+  text-align: right;
+}
+.duebar__g {
+  display: block;
+  flex: 1 0 100%;
+  height: 3px;
+  margin-top: var(--sp-1);
+  border-radius: 99px;
+  background: rgba(61, 47, 34, 0.12);
+  overflow: hidden;
+}
+.duebar__g i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--sage);
+}
+
+/* ── ส่วนที่พับเก็บไว้ในกล่อง ───────────────────────────────── */
+/* รายการที่ตรวจมาแล้วไม่ต้องกางไว้ให้เลื่อนผ่าน แต่ยังเปิดดูได้ */
+.fold {
+  border-top: 1px solid var(--line-soft);
+  padding: var(--sp-2) 0;
+}
+.fold__sum {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--clay);
+  cursor: pointer;
+  padding: var(--sp-1) 0;
+  list-style: none;
+}
+.fold__sum::-webkit-details-marker { display: none; }
+.fold__sum::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--sp-2);
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg) translateY(-1px);
+  transition: transform 160ms ease;
+}
+.fold[open] > .fold__sum::before { transform: rotate(45deg) translateY(-2px); }
+.fold__sum:hover { color: var(--clay-dark); }
+
+/* ── ตารางสรุปรายเดือน ─────────────────────────────────────── */
+/* ตารางจริง เพราะงานของหน้าสรุปคือเทียบเดือนต่อเดือน
+   ตัวเลขต้องอยู่คอลัมน์เดียวกันและชิดขวาถึงจะกวาดตาเทียบได้ */
+.ltable {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-5);
+}
+.ltable__t {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+.ltable__cap {
+  caption-side: top;
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+.ltable__t th,
+.ltable__t td {
+  padding: var(--sp-2) var(--sp-4);
+  text-align: left;
+  border-top: 1px solid var(--line-soft);
+}
+.ltable__t thead th {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+  background: var(--cream);
+}
+.ltable__t tbody th {
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ltable__t .num {
+  text-align: right;
+  font-family: var(--font-head);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.ltable__t tbody tr:hover { background: var(--cream); }
+.ltable__t tbody tr.is-zero th,
+.ltable__t tbody tr.is-zero .num { color: var(--mist); }
+.ltable__t .num.is-neg { color: var(--coral); }
+.ltable__t tfoot th,
+.ltable__t tfoot td {
+  border-top: 1.5px solid var(--line);
+  background: var(--cream);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ltable__t tfoot .num { color: var(--ink); }
+
+.fhint--foot {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+/* ── จอแคบ ─────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  /* ยอดรวมเรียงลงมาแทนการบีบสามช่องให้แคบจนตัวเลขขึ้นบรรทัดใหม่ */
+  .lstrip {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+  .lstrip__i {
+    border-left: none;
+    border-top: 1px solid var(--line-soft);
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .lstrip__i:first-child { border-top: none; }
+  .lstrip__k { flex: 1 1 auto; }
+  .lstrip__v { font-size: var(--t-base); }
+  .lstrip__n { flex: 0 0 auto; max-width: 42%; }
+
+  .ftools__right { flex: 1 1 100%; flex-wrap: wrap; }
+  /* ช่องค้นหายืดหดได้ ปุ่มจะได้นั่งข้าง ๆ ไม่ตกลงไปกินอีกบรรทัด */
+  .ftools__q { flex: 1 1 160px; }
+  .whosel { flex: 1 1 100%; }
+  .whosel .field__input { min-width: 0; flex: 1 1 auto; }
+
+  /* กล่องรับเงินบนจอสูง 844px ล้นไปยี่สิบพิกเซล บีบแถบยอดกับระยะห่างให้พอดี */
+  .duebar {
+    padding: var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-3);
+  }
+  .duebar__v { font-size: var(--t-md); }
+
+  .irow__open { padding-left: var(--sp-3); gap: var(--sp-2); }
+  .irow__act { padding: 6px 10px; }
+  .irow__act--off { width: 53px; }
+
+  /* วันที่ยังต้องอยู่ แค่บีบคอลัมน์ให้แคบลง
+     ซ่อนไปแล้วจะอ่านรายการย้อนหลังไม่ได้เลย */
+  .crow { padding: var(--sp-3); gap: var(--sp-2); grid-template-columns: 52px 1fr auto; }
+  .crow--pick { grid-template-columns: 20px 52px 1fr auto; }
+
+  .ltable__t th,
+  .ltable__t td { padding: var(--sp-2) var(--sp-3); }
+  .duebar__u { margin-left: 0; text-align: left; flex: 1 1 100%; }
+}

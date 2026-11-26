@@ -16,7 +16,7 @@ const OLD_SPREADSHEET_ID = '17zBt9UHieSkprg28hZ7abTBKoV7mO9nzHHMz8UAJUV4';
 // ใช้ตอบคำถามว่า "วางโค้ดแล้วแต่ Deploy เวอร์ชันใหม่หรือยัง"
 // เพราะ Apps Script ยังเสิร์ฟโค้ดเวอร์ชันเดิมจนกว่าจะกด Deploy ใหม่
 // เพิ่มเลขนี้ทุกครั้งที่แก้โค้ดหลังบ้าน
-const APP_VERSION = 'phase6.5';
+const APP_VERSION = 'phase6.6';
 
 // ── Timezone ────────────────────────────────────────────────
 // ทุกวันที่ในระบบต้องอ้างอิงเวลาไทย ห้ามใช้ toISOString() ตรง ๆ

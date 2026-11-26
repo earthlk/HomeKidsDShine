@@ -332,6 +332,7 @@ function checkFiles() {
     'Users.gs':      'getUsers',
     'Finance.gs':    'getFinanceBoard',
     'Settings.gs':   'getSettings',
+    'Ledger.gs':     'getLedger',
   };
 
   const missing = [];

@@ -142,6 +142,9 @@ const ROUTES = {
   recordPayment:   { roles: [ROLE.ADMIN], fn: (s, p) => recordPayment(s, p) },
   removePayment:   { roles: [ROLE.ADMIN], fn: (s, p) => removePayment(s, p) },
 
+  // สรุปการเงิน — รวมรายรับรายจ่ายของศูนย์ ผู้ดูแลระบบเท่านั้น
+  getLedger:       { roles: [ROLE.ADMIN], fn: (s, p) => getLedger(s, p) },
+
   // ผู้ใช้งานและผู้ฝึกสอน
   getUsers:        { roles: [ROLE.ADMIN], fn: (s)    => getUsers(s) },
   saveUser:        { roles: [ROLE.ADMIN], fn: (s, p) => saveUser(s, p) },
