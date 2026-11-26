@@ -16,7 +16,7 @@ const OLD_SPREADSHEET_ID = '17zBt9UHieSkprg28hZ7abTBKoV7mO9nzHHMz8UAJUV4';
 // ใช้ตอบคำถามว่า "วางโค้ดแล้วแต่ Deploy เวอร์ชันใหม่หรือยัง"
 // เพราะ Apps Script ยังเสิร์ฟโค้ดเวอร์ชันเดิมจนกว่าจะกด Deploy ใหม่
 // เพิ่มเลขนี้ทุกครั้งที่แก้โค้ดหลังบ้าน
-const APP_VERSION = 'phase6.4';
+const APP_VERSION = 'phase6.5';
 
 // ── Timezone ────────────────────────────────────────────────
 // ทุกวันที่ในระบบต้องอ้างอิงเวลาไทย ห้ามใช้ toISOString() ตรง ๆ
@@ -35,6 +35,7 @@ const SHEET = {
   PAYMENTS:     'Payments',
   PAYOUTS:      'Payouts',
   FEEPAYMENTS:  'FeePayments',
+  SETTINGS:     'Settings',
   RECEIPTS:     'Receipts',
   PHOTOS:       'Photos',
   CONSENT:      'PdpaConsent',
@@ -134,6 +135,13 @@ const SCHEMA = {
     'id', 'enrollmentId', 'amount', 'method', 'reference', 'note',
     'paidAt', 'recordedBy', 'createdAt', 'updatedAt',
   ],
+
+  // ค่าตั้งของศูนย์ เก็บเป็นคู่ชื่อ-ค่า ไม่ใช่คอลัมน์ละเรื่อง
+  // เพิ่มค่าใหม่ได้โดยไม่ต้องแตะ schema และไม่ทำให้คอลัมน์เดิมเลื่อน
+  // ใช้ id เป็นชื่อค่า เช่น promptpayId จะได้ readOne/updateRow ได้เลย
+  [SHEET.SETTINGS]: [
+    'id', 'value', 'updatedAt',
+  ],
   [SHEET.RECEIPTS]: [
     'id', 'enrollmentId', 'receiptNo', 'amount', 'issuedAt', 'issuedBy',
     'createdAt', 'updatedAt',
@@ -172,7 +180,8 @@ const PAYOUT_STATUS = {
 // สถานะการชำระค่าคอร์สของผู้ปกครอง คำนวณจากยอดที่รับมาแล้วเทียบกับราคา
 // ไม่ได้เก็บเป็นคอลัมน์ เพราะต้องเปลี่ยนตามทุกครั้งที่รับเงินเพิ่ม
 const FEE_STATUS = {
-  UNPAID:  'unpaid',    // ยังไม่ได้รับเงินเลย
+  NOPRICE: 'noprice',   // ยังไม่ได้ตั้งราคา คิดยอดค้างไม่ได้
+  UNPAID:  'unpaid',    // ตั้งราคาแล้ว แต่ยังไม่ได้รับเงินเลย
   PARTIAL: 'partial',   // รับมาบางส่วน
   PAID:    'paid',      // ครบแล้ว
 };

@@ -136,6 +136,9 @@ const ROUTES = {
 
   // เงินเข้า — ค่าคอร์สจากผู้ปกครอง ตัวฟังก์ชันกรองตามสิทธิ์เอง
   getIncomeBoard:  { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s, p) => getIncomeBoard(s, p) },
+  getPayQR:        { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s, p) => getPayQR(s, p) },
+  getSettings:     { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s)    => getSettings(s) },
+  saveSettings:    { roles: [ROLE.ADMIN], fn: (s, p) => saveSettings(s, p) },
   recordPayment:   { roles: [ROLE.ADMIN], fn: (s, p) => recordPayment(s, p) },
   removePayment:   { roles: [ROLE.ADMIN], fn: (s, p) => removePayment(s, p) },
 

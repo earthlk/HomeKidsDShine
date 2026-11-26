@@ -32,7 +32,10 @@ const Finance = {
   feeQuery: '',
 
   METHOD:    { transfer: 'โอนเงิน', cash: 'เงินสด' },
-  FEE_LABEL: { unpaid: 'ยังไม่จ่าย', partial: 'จ่ายบางส่วน', paid: 'ครบแล้ว' },
+  FEE_LABEL: {
+    noprice: 'ยังไม่ได้ตั้งราคา', unpaid: 'ยังไม่จ่าย',
+    partial: 'จ่ายบางส่วน',      paid:   'ครบแล้ว',
+  },
 
   defaultRange() {
     const t = UI.today();
@@ -101,7 +104,10 @@ const Finance = {
     const parent = this.income.isParent;
     const rows   = this.income.rows || [];
 
-    const due  = rows.filter(r => r.due > 0);
+    // นับจากสถานะ ไม่ใช่จาก due เพราะรายการที่ยังไม่ได้ตั้งราคามี due เป็นศูนย์
+    // แต่ไม่ได้แปลว่าจ่ายครบ ถ้านับจาก due มันจะหลุดไปรวมกับพวกที่จ่ายแล้ว
+    const due  = this.feeRows('due');
+    const nop  = rows.filter(r => r.status === 'noprice');
     const sumD = due.reduce((n, r) => n + r.due, 0);
     const sumP = rows.reduce((n, r) => n + r.paid, 0);
 
@@ -115,9 +121,10 @@ const Finance = {
           <span class="stat__num">${UI.money(sumP)}</span>
           <span class="stat__k">รับมาแล้วทั้งหมด</span>
         </div>
-        <div class="stat">
-          <span class="stat__num">${rows.length}</span>
-          <span class="stat__k">รายการลงทะเบียน</span>
+        <div class="stat${nop.length ? ' stat--alert' : ''}">
+          <span class="stat__num">${nop.length || rows.length}</span>
+          <span class="stat__k">${nop.length
+            ? 'ยังไม่ได้ตั้งราคา ต้องแก้ก่อนเก็บเงิน' : 'รายการลงทะเบียน'}</span>
         </div>
       </div>
 
@@ -128,8 +135,12 @@ const Finance = {
             <span class="chipbtn__n">${this.feeRows(v).length}</span></button>`).join('')}
       </div>
 
-      ${parent ? '' : `<input class="field__input toolbar__search" id="fe_q" type="search"
-        placeholder="ค้นหาจากชื่อเด็ก ผู้ปกครอง หรือคอร์ส" value="${UI.esc(this.feeQuery)}">`}
+      ${parent ? '' : `
+        <div class="filterbar">
+          <input class="field__input toolbar__search" id="fe_q" type="search"
+            placeholder="ค้นหาจากชื่อเด็ก ผู้ปกครอง หรือคอร์ส" value="${UI.esc(this.feeQuery)}">
+          <button class="btn btn--ghost btn--sm" data-act="settings">ตั้งค่าการรับเงิน</button>
+        </div>`}
 
       <div id="feList"></div>`;
 
@@ -138,6 +149,7 @@ const Finance = {
         Finance.feeQuery = e.target.value;
         Finance.paintFeeList();
       });
+      box.querySelector('[data-act="settings"]').onclick = () => Finance.openSettings();
     }
 
     box.querySelectorAll('[data-ftab]').forEach(b => {
@@ -152,10 +164,12 @@ const Finance = {
     this.paintFeeList();
   },
 
+  // คัดจากสถานะที่หลังบ้านคิดมา ไม่ใช่จาก due
+  // รายการที่ยังไม่ได้ตั้งราคาถือว่ายังไม่จบ จึงอยู่ในค้างชำระ ไม่ใช่ครบแล้ว
   feeRows(tab) {
     const rows = (this.income && this.income.rows) || [];
-    if (tab === 'due')  return rows.filter(r => r.due > 0);
-    if (tab === 'paid') return rows.filter(r => r.due <= 0);
+    if (tab === 'due')  return rows.filter(r => r.status !== 'paid');
+    if (tab === 'paid') return rows.filter(r => r.status === 'paid');
     return rows;
   },
 
@@ -187,12 +201,16 @@ const Finance = {
           ${this.bar(r)}
         </span>
         <span class="erow__right">
-          ${r.due > 0
+          ${r.status === 'noprice'
+            ? `<span class="erow__none">—</span>
+               <span class="erow__k">ยังไม่ได้ตั้งราคา</span>`
+            : r.due > 0
             ? `<span class="erow__due">${UI.money(r.due)}</span>
                <span class="erow__k">ค้าง · จาก ${UI.money(r.price)}</span>`
             : `<span class="erow__done">${UI.money(r.price)}</span>
                <span class="erow__k">ครบแล้ว</span>`}
           <span class="pchip pchip--${r.status === 'paid' ? 'ok'
+            : r.status === 'noprice' ? 'alert'
             : r.status === 'partial' ? 'warn' : 'muted'}">
             ${this.FEE_LABEL[r.status]}</span>
         </span>
@@ -205,6 +223,7 @@ const Finance = {
 
   // แถบความคืบหน้าของการชำระ เห็นสัดส่วนได้เร็วกว่าอ่านตัวเลขสองตัวมาเทียบกันเอง
   bar(r) {
+    if (r.status === 'noprice') return '';   // ไม่มีราคา แถบสัดส่วนไม่มีความหมาย
     const pct = r.price > 0 ? Math.min(100, Math.round((r.paid / r.price) * 100)) : 0;
     return `<span class="paybar"><span class="paybar__fill" style="width:${pct}%"></span></span>`;
   },
@@ -214,22 +233,29 @@ const Finance = {
     const r = (this.income.rows || []).find(x => String(x.id) === String(id));
     if (!r) return;
 
-    const admin = !this.income.isParent;
+    const admin   = !this.income.isParent;
+    const noPrice = r.status === 'noprice';
 
     UI.openSheet(`
       <div class="sheet__title">${UI.esc(r.childName)}</div>
       <p class="sheet__sub">${UI.esc(r.courseName)}${
         r.parentName && admin ? ' · ผู้ปกครอง ' + UI.esc(r.parentName) : ''}</p>
 
-      <div class="paysum ${r.due > 0 ? 'paysum--due' : ''}">
-        <span class="paysum__amt">${UI.money(r.due)}</span>
-        <span class="paysum__k">บาท ${r.due > 0 ? 'ที่ยังค้างอยู่' : '— ชำระครบแล้ว'}</span>
-      </div>
+      ${noPrice ? `
+        <div class="notice notice--warn">
+          รายการนี้ยังไม่ได้ตั้งราคา จึงยังคิดยอดค้างและรับเงินไม่ได้
+          ${admin ? 'ไปตั้งราคาที่หน้าคอร์ส แล้วเปิดรายการลงทะเบียนของ' +
+            UI.esc(r.childName) + ' เพื่อแก้ราคา' : 'แจ้งผู้ดูแลศูนย์ให้ตั้งราคาก่อน'}
+        </div>`
+      : `<div class="paysum ${r.due > 0 ? 'paysum--due' : ''}">
+          <span class="paysum__amt">${UI.money(r.due)}</span>
+          <span class="paysum__k">บาท ${r.due > 0 ? 'ที่ยังค้างอยู่' : '— ชำระครบแล้ว'}</span>
+        </div>`}
 
       ${People.section('ยอดรวม', [
-        ['ราคาที่ตกลง', UI.money(r.price) + ' บาท'],
+        ['ราคาที่ตกลง', noPrice ? 'ยังไม่ได้ตั้ง' : UI.money(r.price) + ' บาท'],
         ['รับมาแล้ว', UI.money(r.paid) + ' บาท'],
-        ['คงเหลือ', UI.money(r.due) + ' บาท'],
+        ['คงเหลือ', noPrice ? '—' : UI.money(r.due) + ' บาท'],
         ['วันที่เริ่ม', r.startDate ? UI.thaiDate(r.startDate) : ''],
       ])}
 
@@ -249,7 +275,7 @@ const Finance = {
         </div>` : '<p class="fhint">ยังไม่มีการรับเงินในรายการนี้</p>'}
       </div>
 
-      ${admin && r.due > 0 ? `
+      ${admin && r.due > 0 && !noPrice ? `
         <div class="dsection">
           <h3 class="dsection__title">บันทึกรับเงิน</h3>
           <div class="frow">
@@ -265,7 +291,9 @@ const Finance = {
 
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ปิด</button>
-        ${admin && r.due > 0 ? `<button class="btn btn--primary" data-act="save"
+        ${r.due > 0 && !noPrice ? `<button class="btn btn--ghost" data-act="qr"
+          data-busy="กำลังสร้าง">QR พร้อมเพย์</button>` : ''}
+        ${admin && r.due > 0 && !noPrice ? `<button class="btn btn--primary" data-act="save"
           data-busy="กำลังบันทึก">บันทึกรับเงิน</button>` : ''}
       </div>`);
 
@@ -286,6 +314,9 @@ const Finance = {
     People.bindSheet({
       close: () => UI.closeSheet(),
       save:  () => Finance.savePayment(r.id),
+      // ผู้ดูแลระบบพิมพ์ยอดไว้เท่าไหร่ ให้ QR ล็อคยอดนั้น ไม่ใช่ยอดค้างทั้งก้อน
+      // ผู้ปกครองไม่มีช่องให้พิมพ์ จึงได้ยอดค้างเต็มจำนวน
+      qr: () => Finance.openQR(r, admin ? People.val('g_amount') : ''),
     });
   },
 
@@ -316,6 +347,113 @@ const Finance = {
     UI.closeSheet();
     await this.reloadIncome();
     UI.toast('ลบงวดแล้ว');
+  },
+
+  // ── ตั้งค่าการรับเงินของศูนย์ ─────────────────────────────
+  async openSettings() {
+    UI.openSheet(UI.loading());
+
+    const res = await API.call('getSettings');
+    if (!res.ok) { UI.closeSheet(); UI.toast(res.message, 'error'); return; }
+    const s = res.data;
+
+    UI.fillSheet(`
+      <div class="sheet__title">ตั้งค่าการรับเงิน</div>
+      <p class="sheet__sub">ใช้สร้าง QR พร้อมเพย์แบบล็อคยอดให้ผู้ปกครองสแกนจ่าย</p>
+
+      ${People.fgroup('พร้อมเพย์ของศูนย์')}
+      ${People.finput('s_pp', 'เบอร์พร้อมเพย์ หรือเลขผู้เสียภาษี', s.promptpayId,
+        'เบอร์มือถือ 10 หลัก หรือเลขผู้เสียภาษี 13 หลัก')}
+      ${People.finput('s_ppname', 'ชื่อบัญชี', s.promptpayName,
+        'ชื่อที่จะขึ้นในแอปธนาคารของผู้โอน')}
+      <p class="fhint">
+        ยอดเงินจะถูกล็อคมากับ QR ผู้โอนแก้ยอดเองไม่ได้
+        สร้างในเครื่องทั้งหมด ไม่ได้ส่งเลขบัญชีหรือยอดเงินออกไปข้างนอก
+      </p>
+
+      ${People.fgroup('ข้อมูลศูนย์', 'ใช้กับใบเสร็จใน Phase ถัดไป')}
+      ${People.finput('s_tax', 'เลขประจำตัวผู้เสียภาษี', s.taxId, '13 หลัก')}
+      ${People.finput('s_phone', 'โทรศัพท์', s.centerPhone, '')}
+      ${People.finput('s_addr', 'ที่อยู่', s.centerAddress, '')}
+
+      <div class="sheet__actions">
+        <button class="btn btn--ghost" data-act="close">ปิด</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
+      </div>`);
+
+    People.bindSheet({
+      close: () => UI.closeSheet(),
+      save:  async () => {
+        const out = await API.call('saveSettings', {
+          promptpayId:   People.val('s_pp'),
+          promptpayName: People.val('s_ppname'),
+          taxId:         People.val('s_tax'),
+          centerPhone:   People.val('s_phone'),
+          centerAddress: People.val('s_addr'),
+        });
+        if (!out.ok) { UI.toast(out.message, 'error'); return; }
+        UI.closeSheet();
+        UI.toast('บันทึกการตั้งค่าแล้ว');
+      },
+    });
+  },
+
+  // ── QR พร้อมเพย์ล็อคยอด ───────────────────────────────────
+  // ยอดคิดที่หลังบ้าน หน้าเว็บแค่ขอมาวาด จะได้ไม่มีใครแก้ยอดจากฝั่งนี้ได้
+  async openQR(r, amount) {
+    UI.openSheet(UI.loading('กำลังสร้าง QR'));
+
+    // พลาดแล้วพากลับไปหน้ารายละเอียดเดิม ไม่ใช่ปิดกล่องทิ้งทั้งใบ
+    // ไม่งั้นคนกดจะหลุดออกมาที่รายการแล้วต้องไล่หารายการเดิมใหม่
+    const fail = (msg) => {
+      UI.toast(msg, 'error');
+      Finance.openFee(r.id);
+    };
+
+    const res = await API.call('getPayQR', { enrollmentId: r.id, amount: amount });
+    if (!res.ok) { fail(res.message); return; }
+
+    const q = res.data;
+    let svg;
+    try {
+      svg = QR.svg(q.payload);
+    } catch (err) {
+      fail('สร้าง QR ไม่สำเร็จ: ' + err.message);
+      return;
+    }
+
+    UI.fillSheet(`
+      <div class="sheet__title">สแกนจ่าย</div>
+      <p class="sheet__sub">${UI.esc(r.childName)} · ${UI.esc(r.courseName)}</p>
+
+      <div class="qrbox">
+        <div class="qrbox__img">${svg}</div>
+        <div class="qrbox__amt">${UI.money(q.amount)} <span>บาท</span></div>
+        <p class="qrbox__to">
+          ${q.name ? UI.esc(q.name) + ' · ' : ''}พร้อมเพย์ ${UI.esc(q.idMask)}
+        </p>
+      </div>
+
+      <div class="notice notice--info">
+        ยอดถูกล็อคมากับ QR แล้ว ผู้โอนแก้ยอดเองไม่ได้
+        ${q.amount < q.due
+          ? 'ยอดนี้เป็นการแบ่งจ่าย จ่ายแล้วยังค้างอีก ' + UI.money(q.due - q.amount) + ' บาท'
+          : 'โอนแล้วตัดยอดค้างหมดพอดี'}
+      </div>
+
+      <p class="fhint">
+        โอนเสร็จแล้วยังต้องกดบันทึกรับเงินเอง ระบบไม่ได้เชื่อมกับบัญชีธนาคาร
+      </p>
+
+      <div class="sheet__actions">
+        <button class="btn btn--ghost" data-act="back">ย้อนกลับ</button>
+        <button class="btn btn--primary" data-act="close">เสร็จแล้ว</button>
+      </div>`);
+
+    People.bindSheet({
+      close: () => UI.closeSheet(),
+      back:  () => Finance.openFee(r.id),
+    });
   },
 
   async reloadIncome() {

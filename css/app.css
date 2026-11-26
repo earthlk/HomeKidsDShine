@@ -2068,3 +2068,50 @@ button.rail__user:hover .rail__more { color: var(--clay); }
   .whosel { justify-content: space-between; }
   .whosel .field__input { flex: 1; min-width: 0; }
 }
+
+/* ── รายการที่ยังไม่ได้ตั้งราคา ────────────────────────────── */
+/* ต้องสะดุดตา เพราะเป็นเงินที่ควรเก็บแต่ยังเก็บไม่ได้
+   ใช้สีส้มแดงจากรถของเล่น ไม่ใช่สีเทาแบบรายการที่จบไปแล้ว */
+.pchip--alert { background: var(--coral-tint); color: var(--coral); }
+.stat--alert { border-color: var(--coral); background: var(--coral-tint); }
+.stat--alert .stat__num { color: var(--coral); }
+.erow__none {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--mist);
+}
+
+/* ── QR พร้อมเพย์ ──────────────────────────────────────────── */
+.qrbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+/* ขนาดคงที่ ไม่ยืดตามจอ เพราะ QR เล็กเกินกล้องจับยาก ใหญ่เกินก็ต้องถอยห่าง */
+.qrbox__img {
+  width: 232px;
+  max-width: 100%;
+  line-height: 0;
+}
+.qrbox__img svg { width: 100%; height: auto; display: block; }
+.qrbox__amt {
+  font-family: var(--font-head);
+  font-size: var(--t-xl);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--clay-dark);
+}
+.qrbox__amt span { font-size: var(--t-base); font-weight: 400; color: var(--ink-soft); }
+.qrbox__to {
+  margin: 0;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  text-align: center;
+}

@@ -331,6 +331,7 @@ function checkFiles() {
     'Trainers.gs':   'getTrainerBoard',
     'Users.gs':      'getUsers',
     'Finance.gs':    'getFinanceBoard',
+    'Settings.gs':   'getSettings',
   };
 
   const missing = [];

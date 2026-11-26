@@ -372,8 +372,12 @@ function getPayoutDetail(sess, p) {
 // ยอดค้าง = ราคา ลบ ผลรวมของงวดที่รับมาแล้ว คำนวณสดทุกครั้ง ไม่เก็บเป็นคอลัมน์
 //
 // ── สถานะการชำระของรายการหนึ่ง ─────────────────────────────
+// ⚠️ ราคาเป็นศูนย์ไม่ได้แปลว่าจ่ายครบ แปลว่ายังไม่ได้ตั้งราคา
+// รายการที่ลงทะเบียนก่อนมีคอลัมน์ price หรือคอร์สที่ยังไม่ได้ใส่ราคาจะเข้าเคสนี้
+// ถ้าปล่อยให้ตกไปอยู่กับ "ครบแล้ว" เงินที่ควรเก็บจะหายไปเงียบ ๆ โดยไม่มีใครรู้
 function feeStatusOf(price, paid) {
-  if (Number(paid) <= 0) return FEE_STATUS.UNPAID;
+  if (Number(price) <= 0)           return FEE_STATUS.NOPRICE;
+  if (Number(paid)  <= 0)           return FEE_STATUS.UNPAID;
   if (Number(paid) >= Number(price)) return FEE_STATUS.PAID;
   return FEE_STATUS.PARTIAL;
 }
@@ -444,9 +448,13 @@ function getIncomeBoard(sess, p) {
     };
   });
 
-  // ค้างมากอยู่บน ตามด้วยรายการที่เพิ่งลงทะเบียน
+  // รายการที่ยังไม่ได้ตั้งราคาอยู่บนสุด เพราะต้องแก้ก่อนถึงจะเก็บเงินได้
+  // ถัดมาค้างมากอยู่บน แล้วค่อยเรียงตามวันที่ลงทะเบียน
+  const rank = (r) => r.status === FEE_STATUS.NOPRICE ? 0 : 1;
   rows.sort((a, b) =>
-    (b.due - a.due) || String(b.startDate).localeCompare(String(a.startDate)));
+    (rank(a) - rank(b)) ||
+    (b.due - a.due) ||
+    String(b.startDate).localeCompare(String(a.startDate)));
 
   return {
     isParent: sess.role === ROLE.PARENT,
@@ -462,6 +470,14 @@ function recordPayment(sess, p) {
 
   const amount = Number(p.amount);
   if (!amount || isNaN(amount) || amount <= 0) throw new Error('ใส่จำนวนเงินที่รับก่อน');
+
+  // ไม่มีราคาก็ไม่รู้ว่ารับครบหรือยัง ต้องไปตั้งราคาที่รายการลงทะเบียนก่อน
+  const priceCheck = Number(enrollment.price !== '' && enrollment.price !== null &&
+    enrollment.price !== undefined ? enrollment.price
+    : ((readOne(SHEET.COURSES, enrollment.courseId) || {}).price || 0));
+  if (priceCheck <= 0) {
+    throw new Error('รายการนี้ยังไม่ได้ตั้งราคา แก้ราคาที่หน้าคอร์ส > รายการลงทะเบียน ก่อน');
+  }
 
   const method = String(p.method || '').trim();
   if (['transfer', 'cash'].indexOf(method) < 0) throw new Error('เลือกวิธีรับเงินก่อน');
