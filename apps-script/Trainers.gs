@@ -5,6 +5,15 @@
 
 // คอร์สที่รับสอนเก็บเป็นข้อความคั่นจุลภาคในเซลล์เดียว
 // ง่ายกว่าแยกชีตใหม่ และจำนวนคอร์สของศูนย์มีไม่มาก
+// เอาเฉพาะคีย์ที่อยู่ในรายการที่อนุญาต ใช้กรองอัตราค่าสอนของคอร์สที่ถูกเอาออกแล้ว
+function pickKeys(obj, allow) {
+  const out = {};
+  (allow || []).forEach(k => {
+    if (obj && Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k];
+  });
+  return out;
+}
+
 function parseIds(value) {
   return String(value || '').split(',').map(x => x.trim()).filter(Boolean);
 }
@@ -34,6 +43,8 @@ function getTrainerBoard(sess) {
       bankName:        t.bankName || '',
       bankAccountNo:   t.bankAccountNo || '',
       bankAccountName: t.bankAccountName || '',
+      // อัตราเฉพาะตัวรายคอร์ส คอร์สที่ไม่มีในนี้ใช้ค่าตั้งต้นของคอร์สเอง
+      fees:            parseFeeOverrides(t.feeOverrides),
 
       // บัญชีเข้าระบบ ถ้าไม่มีจะเข้าใช้งานไม่ได้เลย ต้องเห็นชัดจากหน้านี้
       email:          account ? account.email : '',
@@ -64,7 +75,10 @@ function getTrainerBoard(sess) {
     }));
 
   const courses = readAll(SHEET.COURSES)
-    .map(c => ({ id: c.id, name: c.name, category: c.category, active: isTrue(c.active) }))
+    .map(c => ({
+      id: c.id, name: c.name, category: c.category, active: isTrue(c.active),
+      trainerFee: Number(c.trainerFee || 0),   // ค่าตั้งต้น ใช้เป็นตัวอย่างในช่องกรอก
+    }))
     .sort((a, b) => String(a.name).localeCompare(String(b.name), 'th'));
 
   return { trainers: rows, linkable: linkable, courses: courses };
@@ -116,6 +130,8 @@ function saveTrainer(sess, p) {
     bankName:        String(p.bankName || '').trim(),
     bankAccountNo:   String(p.bankAccountNo || '').replace(/[^0-9]/g, ''),
     bankAccountName: String(p.bankAccountName || '').trim(),
+    // เก็บเฉพาะคอร์สที่ยังรับสอนอยู่ เอาคอร์สออกแล้วอัตราเฉพาะตัวก็ไม่ต้องค้าง
+    feeOverrides:    buildFeeOverrides(pickKeys(p.fees, courseIds)),
   };
 
   if (p.id) {

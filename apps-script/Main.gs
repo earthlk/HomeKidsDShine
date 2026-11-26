@@ -11,8 +11,16 @@
 // แยกกันแบบเดิมที่ทำให้ error หายไปเงียบ ๆ
 // ============================================================
 
+// เปิด URL นี้ในเบราว์เซอร์ได้เลย ใช้ดูว่าเวอร์ชันที่ Deploy ไว้เป็นตัวไหน
+// actions บอกว่าโค้ดที่เสิร์ฟอยู่ตอนนี้รู้จักคำสั่งอะไรบ้าง
+// ถ้าไม่เห็นคำสั่งที่เพิ่งเพิ่ม แปลว่ายังไม่ได้ Deploy เวอร์ชันใหม่
 function doGet(e) {
-  return json({ ok: true, data: { service: 'Homey Kids D Shine API', time: nowTH() } });
+  return json({ ok: true, data: {
+    service: 'Homey Kids D Shine API',
+    version: APP_VERSION,
+    time:    nowTH(),
+    actions: Object.keys(ROUTES).sort(),
+  } });
 }
 
 function doPost(e) {
@@ -116,6 +124,20 @@ const ROUTES = {
   getActivityBoard: { fn: (s) => getActivityBoard(s) },   // ตัวฟังก์ชันกรองตามสิทธิ์เอง
   saveActivity:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => saveActivity(s, p) },
   removeActivity:   { roles: [ROLE.ADMIN],               fn: (s, p) => removeActivity(s, p) },
+
+  // Phase 6 — การเงิน
+  // ผู้ฝึกสอนเปิดหน้าการเงินได้ แต่เห็นเฉพาะของตัวเอง ตัวฟังก์ชันกรองเอง
+  // เงินออก — ค่าสอนของผู้ฝึกสอน
+  getFinanceBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getFinanceBoard(s, p) },
+  getPayoutDetail: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getPayoutDetail(s, p) },
+  createPayout:    { roles: [ROLE.ADMIN], fn: (s, p) => createPayout(s, p) },
+  markPayoutPaid:  { roles: [ROLE.ADMIN], fn: (s, p) => markPayoutPaid(s, p) },
+  cancelPayout:    { roles: [ROLE.ADMIN], fn: (s, p) => cancelPayout(s, p) },
+
+  // เงินเข้า — ค่าคอร์สจากผู้ปกครอง ตัวฟังก์ชันกรองตามสิทธิ์เอง
+  getIncomeBoard:  { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s, p) => getIncomeBoard(s, p) },
+  recordPayment:   { roles: [ROLE.ADMIN], fn: (s, p) => recordPayment(s, p) },
+  removePayment:   { roles: [ROLE.ADMIN], fn: (s, p) => removePayment(s, p) },
 
   // ผู้ใช้งานและผู้ฝึกสอน
   getUsers:        { roles: [ROLE.ADMIN], fn: (s)    => getUsers(s) },

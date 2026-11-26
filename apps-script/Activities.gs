@@ -206,6 +206,14 @@ function removeActivity(sess, p) {
     .find(a => String(a.sessionId) === String(p.sessionId));
   if (!act) throw new Error('ไม่พบบันทึกกิจกรรม');
 
+  // ลบบันทึกแล้วนัดจะกลับไปเป็น "ยังไม่สอน" ซึ่งใช้ไม่ได้ถ้าจ่ายค่าสอนไปแล้ว
+  // ตัวเลขในรอบที่จ่ายไปแล้วจะไม่ตรงกับคาบที่นับได้จริงทันที
+  const paid = paidPayoutOf(p.sessionId);
+  if (paid) {
+    throw new Error('คาบนี้อยู่ในรอบจ่ายค่าสอนที่โอนเงินไปแล้ว (' +
+      paid.periodStart + ' ถึง ' + paid.periodEnd + ') ลบบันทึกไม่ได้');
+  }
+
   deleteRow(SHEET.ACTIVITIES, act.id);
   updateRow(SHEET.SESSIONS, { id: p.sessionId, status: SESSION_STATUS.SCHEDULED });
 

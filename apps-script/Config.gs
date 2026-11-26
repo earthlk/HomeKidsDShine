@@ -11,6 +11,13 @@ const SPREADSHEET_ID = 'ใส่_ID_ชีตใหม่_ที่นี่';
 // ID ชีตเก่า — ใช้ตอน migrate ข้อมูลเท่านั้น ไม่ได้ใช้ในระบบจริง
 const OLD_SPREADSHEET_ID = '17zBt9UHieSkprg28hZ7abTBKoV7mO9nzHHMz8UAJUV4';
 
+// ── เวอร์ชันของโค้ดหลังบ้าน ─────────────────────────────────
+// เปิด URL ที่ลงท้ายด้วย /exec ในเบราว์เซอร์แล้วจะเห็นค่านี้
+// ใช้ตอบคำถามว่า "วางโค้ดแล้วแต่ Deploy เวอร์ชันใหม่หรือยัง"
+// เพราะ Apps Script ยังเสิร์ฟโค้ดเวอร์ชันเดิมจนกว่าจะกด Deploy ใหม่
+// เพิ่มเลขนี้ทุกครั้งที่แก้โค้ดหลังบ้าน
+const APP_VERSION = 'phase6.4';
+
 // ── Timezone ────────────────────────────────────────────────
 // ทุกวันที่ในระบบต้องอ้างอิงเวลาไทย ห้ามใช้ toISOString() ตรง ๆ
 const TZ = 'Asia/Bangkok';
@@ -26,6 +33,8 @@ const SHEET = {
   SESSIONS:     'Sessions',
   ACTIVITIES:   'Activities',
   PAYMENTS:     'Payments',
+  PAYOUTS:      'Payouts',
+  FEEPAYMENTS:  'FeePayments',
   RECEIPTS:     'Receipts',
   PHOTOS:       'Photos',
   CONSENT:      'PdpaConsent',
@@ -66,6 +75,9 @@ const SCHEMA = {
     'courseIds',
     // บัญชีรับค่าสอน ใช้ในหน้าการเงิน
     'bankName', 'bankAccountNo', 'bankAccountName',
+    // อัตราค่าสอนเฉพาะของคนนี้ เก็บเป็น courseId:จำนวนเงิน คั่นด้วยจุลภาค
+    // คอร์สไหนไม่ได้ระบุไว้ ใช้ trainerFee ของคอร์สนั้นเป็นค่าตั้งต้น
+    'feeOverrides',
   ],
   [SHEET.COURSES]: [
     'id', 'name', 'description', 'category',
@@ -84,6 +96,9 @@ const SCHEMA = {
     'id', 'enrollmentId', 'trainerId', 'date', 'startTime', 'endTime',
     'status', 'location', 'notes', 'cancelReason',
     'createdAt', 'updatedAt',
+    // รอบจ่ายค่าสอนที่คาบนี้ถูกรวมเข้าไปแล้ว ว่าง = ยังไม่ได้จ่าย
+    // เด็กหลายคนในคาบเดียวกันจะได้ payoutId เดียวกันทุกแถว
+    'payoutId',
   ],
   [SHEET.ACTIVITIES]: [
     // summary, skills, nextGoal เป็นบันทึกของคาบ ทุกคนในคาบได้ค่าเดียวกัน
@@ -92,10 +107,32 @@ const SCHEMA = {
     'nextGoal', 'createdAt', 'updatedAt',
     'note',
   ],
+  // ชีตเดิมจากตอนออกแบบครั้งแรก คิดเป็นรายนัด ไม่ได้ใช้งานจริง
+  // ของจริงใช้ Payouts ข้างล่างแทน เพราะจ่ายเป็นรอบและคิดเป็นรายคาบ ไม่ใช่รายเด็ก
+  // ไม่ลบทิ้งเพื่อไม่ให้คอลัมน์ของชีตอื่นเลื่อน
   [SHEET.PAYMENTS]: [
     'id', 'sessionId', 'trainerId', 'amount', 'status',
     'method', 'proofPhotoId', 'paidAt', 'note',
     'createdAt', 'updatedAt',
+  ],
+
+  // รอบจ่ายค่าสอน หนึ่งแถวคือการจ่ายหนึ่งครั้งให้ผู้สอนหนึ่งคน
+  // amount เก็บยอดที่คิดได้ตอนปิดรอบ ไม่คำนวณใหม่ตอนเปิดดู
+  // เพราะอัตราค่าสอนอาจถูกแก้ทีหลัง แล้วยอดที่จ่ายไปแล้วจะเพี้ยน
+  [SHEET.PAYOUTS]: [
+    'id', 'trainerId', 'periodStart', 'periodEnd',
+    'classCount', 'amount', 'status',
+    'method', 'reference', 'note',
+    'paidAt', 'paidBy', 'createdAt', 'updatedAt',
+  ],
+
+  // เงินที่รับจากผู้ปกครอง หนึ่งแถวคือรับเงินหนึ่งครั้ง
+  // ผูกกับรายการลงทะเบียน เพราะราคาตกลงกันที่ระดับนั้น ไม่ใช่ระดับคอร์ส
+  // แบ่งจ่ายได้ไม่จำกัดงวด ยอดค้างคำนวณจาก price ลบผลรวมของแถวในชีตนี้
+  // ไม่เก็บสถานะไว้ในคอลัมน์ เพราะสถานะที่เก็บไว้จะไม่ตรงกับยอดจริงทันทีที่มีการรับเงินเพิ่ม
+  [SHEET.FEEPAYMENTS]: [
+    'id', 'enrollmentId', 'amount', 'method', 'reference', 'note',
+    'paidAt', 'recordedBy', 'createdAt', 'updatedAt',
   ],
   [SHEET.RECEIPTS]: [
     'id', 'enrollmentId', 'receiptNo', 'amount', 'issuedAt', 'issuedBy',
@@ -123,6 +160,21 @@ const SESSION_STATUS = {
   SCHEDULED: 'scheduled',   // นัดแล้ว ยังไม่ถึงวัน หรือถึงแล้วแต่ยังไม่บันทึก
   COMPLETED: 'completed',   // สอนแล้ว + บันทึกกิจกรรมแล้ว
   CANCELLED: 'cancelled',   // ยกเลิก
+};
+
+// สถานะของรอบจ่ายค่าสอน
+// ปิดรอบแล้วยอดจะถูกตรึงไว้ ยกเลิกได้เฉพาะรอบที่ยังไม่ได้โอน
+const PAYOUT_STATUS = {
+  PENDING: 'pending',   // ปิดรอบแล้ว รอโอน
+  PAID:    'paid',      // โอนแล้ว มีเลขอ้างอิง
+};
+
+// สถานะการชำระค่าคอร์สของผู้ปกครอง คำนวณจากยอดที่รับมาแล้วเทียบกับราคา
+// ไม่ได้เก็บเป็นคอลัมน์ เพราะต้องเปลี่ยนตามทุกครั้งที่รับเงินเพิ่ม
+const FEE_STATUS = {
+  UNPAID:  'unpaid',    // ยังไม่ได้รับเงินเลย
+  PARTIAL: 'partial',   // รับมาบางส่วน
+  PAID:    'paid',      // ครบแล้ว
 };
 
 const ROLE = { ADMIN: 'admin', TRAINER: 'trainer', PARENT: 'parent' };
