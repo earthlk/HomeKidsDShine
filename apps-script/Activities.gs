@@ -170,7 +170,16 @@ function saveActivity(sess, p) {
       throw new Error('บันทึกได้เฉพาะนัดที่ตัวเองเป็นผู้สอน');
     }
 
-    const rating = String(kid.rating || '').trim();
+    // เช็กชื่อมาพร้อมฟอร์มบันทึกกิจกรรม เพราะผู้สอนอยู่ตรงนั้นอยู่แล้ว
+    // ไม่ส่งมาก็ไม่เป็นไร ค่าเดิมคงอยู่ ยังไปเช็กทีหลังที่หน้าเช็กชื่อได้
+    // ตัวเรียกตรวจสิทธิ์และวันที่ไปแล้วข้างบน applyAttendance จึงไม่ตรวจซ้ำ
+    const absent = String(kid.attendance || '') === ATTENDANCE.ABSENT;
+    if (kid.attendance !== undefined && kid.attendance !== null) {
+      applyAttendance(row, kid.attendance, kid.note, sess.userId);
+    }
+
+    // เด็กที่ไม่ได้มา ให้คะแนนไม่ได้ เพราะไม่มีอะไรให้ประเมิน
+    const rating = absent ? '' : String(kid.rating || '').trim();
     if (rating && (Number(rating) < 1 || Number(rating) > 5)) {
       throw new Error('คะแนนต้องอยู่ระหว่าง 1 ถึง 5');
     }

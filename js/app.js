@@ -14,6 +14,7 @@ const NAV = {
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางนัด',      icon: 'calendar' },
     { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note',   short: 'บันทึก' },
+    { id: 'attendance', label: 'เช็กชื่อ',    icon: 'check' },
     { id: 'people',   label: 'เด็กและผู้ปกครอง', icon: 'people', short: 'เด็ก' },
     { id: 'trainers', label: 'ผู้ฝึกสอน',      icon: 'whistle' },
     { id: 'courses',  label: 'คอร์ส',          icon: 'book' },
@@ -30,6 +31,7 @@ const NAV = {
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางสอน',      icon: 'calendar' },
     { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note', short: 'บันทึก' },
+    { id: 'attendance', label: 'เช็กชื่อ',    icon: 'check' },
     { id: 'courses',  label: 'คอร์ส',          icon: 'book' },
     { id: 'payouts',  label: 'ค่าสอนของฉัน',  icon: 'wallet', short: 'ค่าสอน' },
   ],
@@ -151,6 +153,39 @@ const App = {
 
     document.getElementById('syncBtn').onclick     = () => Sync.now();
     Sync.start();
+
+    this.refreshAlerts();
+  },
+
+  // ── ป้ายแจ้งเตือนบนเมนู ───────────────────────────────────
+  // ของค้างต้องเห็นโดยไม่ต้องเปิดหน้าไปดู ไม่งั้นคาบที่เด็กขาดจะค้างอยู่เป็นเดือน
+  // เรียกตอนเข้าระบบและหลังเช็กชื่อหรือตัดสินทุกครั้ง
+  // ผู้ปกครองไม่มีหน้านี้ เรียกไปก็โดนปฏิเสธ จึงข้ามไปเลย
+  async refreshAlerts() {
+    if (Store.get('role') === 'parent') return;
+
+    const res = await API.call('getAlerts');
+    if (!res.ok) return;          // ป้ายเป็นของเสริม พลาดแล้วไม่ต้องรบกวนใคร
+
+    this.alerts = Number(res.data.pending || 0) + Number(res.data.unchecked || 0);
+    this.badge('attendance', this.alerts);
+  },
+
+  alerts: 0,
+
+  badge(pageId, n) {
+    document.querySelectorAll('[data-page="' + pageId + '"]').forEach(btn => {
+      let dot = btn.querySelector('.navlink__n');
+
+      if (!n) { if (dot) dot.remove(); return; }
+
+      if (!dot) {
+        dot = document.createElement('span');
+        dot.className = 'navlink__n';
+        btn.appendChild(dot);
+      }
+      dot.textContent = n > 99 ? '99+' : String(n);
+    });
   },
 
   // ── ล้างข้อมูลที่เก็บไว้ทั้งหมด ────────────────────────────
@@ -300,6 +335,10 @@ const App = {
     });
     const more = document.getElementById('moreTab');
     if (more) more.onclick = () => App.openMenu(items);
+
+    // แท็บถูกวาดใหม่ ป้ายที่เคยติดไว้หายไปด้วย ติดกลับจากตัวเลขที่จำไว้
+    // ไม่เรียกหลังบ้านซ้ำ เพราะเปลี่ยนหน้าทีก็จะยิงทีหนึ่งโดยไม่จำเป็น
+    if (this.alerts) this.badge('attendance', this.alerts);
   },
 
   // ── เปลี่ยนหน้า ───────────────────────────────────────────

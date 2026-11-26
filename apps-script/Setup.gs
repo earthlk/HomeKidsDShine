@@ -333,6 +333,7 @@ function checkFiles() {
     'Finance.gs':    'getFinanceBoard',
     'Settings.gs':   'getSettings',
     'Ledger.gs':     'getLedger',
+    'Attendance.gs': 'getAttendanceBoard',
   };
 
   const missing = [];

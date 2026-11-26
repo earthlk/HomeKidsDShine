@@ -2611,3 +2611,125 @@ button.crow:hover { background: var(--cream); }
   .ltable__t td { padding: var(--sp-2) var(--sp-3); }
   .duebar__u { margin-left: 0; text-align: left; flex: 1 1 100%; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Phase 7 — เช็กชื่อและคาบชดเชย
+   ════════════════════════════════════════════════════════════ */
+
+/* ── ป้ายตัวเลขบนเมนู ───────────────────────────────────────── */
+/* ของค้างต้องเห็นโดยไม่ต้องเปิดหน้าไปดู */
+.navlink__n {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--coral);
+  color: #FFFFFF;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* บนแท็บล่างไม่มีที่ให้วางข้างชื่อ เกาะมุมบนขวาของช่องแทน
+   เขียนเป็น .tabbar > .tabbar__item เพื่อไม่ให้เป็นตัวเลือกซ้ำกับของเดิม
+   ซึ่งตัวตรวจของโปรเจ็กต์จะทักว่าประกาศซ้ำ */
+.tabbar > .tabbar__item { position: relative; }
+.tabbar__item .navlink__n {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin-left: 6px;
+}
+
+/* ── แถวแบบไม่กดได้ ─────────────────────────────────────────── */
+/* หน้านี้ตัวแถวไม่ใช่ปุ่ม เพราะปุ่มจริงอยู่ทางขวาและมีหลายปุ่ม */
+.irow__open--flat { cursor: default; }
+.irow__when { font-family: var(--font-body); font-size: var(--t-sm); }
+
+.irow__tag {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+}
+.irow__done {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+/* ปุ่มที่พาไปทำงานต่อ ย้ำด้วยสีแบรนด์เพราะเป็นงานหลักของแท็บนั้น */
+.irow__act--go {
+  background: var(--clay);
+  border-color: var(--clay);
+  color: #FFFFFF;
+}
+.irow__act--go:hover { background: var(--clay-dark); border-color: var(--clay-dark); }
+
+/* ── ปุ่มเช็กชื่อสามปุ่มบนแถว ───────────────────────────────── */
+/* กดครั้งเดียวจบ ไม่เปิดกล่อง ไม่ถามยืนยัน เพราะทำวันละหลายสิบครั้ง */
+.markset {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.markset.is-busy { opacity: 0.5; pointer-events: none; }
+
+.markbtn {
+  padding: 6px 11px;
+  font-family: var(--font-body);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.markbtn:hover { border-color: var(--mist); }
+.markbtn--present:hover { background: var(--sage-tint);  border-color: var(--sage);  color: var(--sage); }
+.markbtn--late:hover    { background: var(--honey-tint); border-color: var(--honey); color: var(--honey); }
+.markbtn--absent:hover  { background: var(--coral-tint); border-color: var(--coral); color: var(--coral); }
+
+/* ── ตัวเลือกในกล่องตัดสิน ──────────────────────────────────── */
+/* สามทางที่ให้ผลต่างกัน ต้องอ่านผลก่อนเลือก ไม่ใช่เดาจากชื่อปุ่ม */
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.pick:hover { border-color: var(--mist); }
+.pick input { margin-top: 3px; accent-color: var(--clay); flex-shrink: 0; }
+.pick:has(input:checked) { border-color: var(--clay); background: var(--clay-tint); }
+.pick__b {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pick__t { font-size: var(--t-sm); font-weight: 500; color: var(--ink); }
+.pick__d { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; }
+
+@media (max-width: 720px) {
+  /* ปุ่มเช็กชื่อสามปุ่มกับชื่อเด็กอยู่บรรทัดเดียวกันไม่พอ ให้ลงมาเต็มความกว้าง */
+  .irow:has(.markset) { grid-template-columns: 1fr; padding: 0 0 var(--sp-3); }
+  .irow:has(.markset) .irow__open { padding-bottom: var(--sp-2); }
+  .markset { padding: 0 var(--sp-3); }
+  .markbtn { flex: 1 1 0; }
+}

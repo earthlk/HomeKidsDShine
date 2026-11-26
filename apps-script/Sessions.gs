@@ -305,16 +305,37 @@ function checkConflict(row, skipId) {
   return null;
 }
 
+// คาบนี้กินโควตาของผู้ปกครองหรือไม่
+//
+// ยกเลิกนัด        ไม่กิน คืนให้นัดใหม่ได้
+// ขาดแล้วคืนคาบ    ไม่กิน ไม่ว่าจะนัดใหม่แล้วหรือยัง คาบใหม่จะไปนับของมันเอง
+// ขาดแล้วตัดคาบ    กิน
+// ขาดแต่ยังไม่ตัดสิน กิน ไว้ก่อน จะได้ไม่สัญญาคาบที่อาจไม่มีให้
+//                  ตัดสินเมื่อไหร่ตัวเลขค่อยขยับ
+function usesQuota(s) {
+  if (s.status === SESSION_STATUS.CANCELLED) return false;
+  const m = String(s.makeupStatus || '');
+  if (m === MAKEUP.CREDITED || m === MAKEUP.RESCHEDULED) return false;
+  return true;
+}
+
 // จำนวนครั้งที่ยังนัดได้ นับนัดที่ยกเลิกแล้วเป็นครั้งที่ยังไม่ใช้
 function remainingOf(enrollmentId) {
   const enr = readOne(SHEET.ENROLLMENTS, enrollmentId);
   if (!enr) return 0;
 
   const used = readAll(SHEET.SESSIONS).filter(s =>
-    String(s.enrollmentId) === String(enrollmentId) &&
-    s.status !== SESSION_STATUS.CANCELLED).length;
+    String(s.enrollmentId) === String(enrollmentId) && usesQuota(s)).length;
 
   return (Number(enr.totalSessions) || 0) - used;
+}
+
+// คาบที่ขาดแล้วยังไม่ได้ตัดสินของการลงทะเบียนหนึ่งรายการ
+// แสดงคู่กับยอดคงเหลือเสมอ เพราะตัวเลขคงเหลือจะขยับเมื่อตัดสิน
+function pendingOf(enrollmentId) {
+  return readAll(SHEET.SESSIONS).filter(s =>
+    String(s.enrollmentId) === String(enrollmentId) &&
+    String(s.makeupStatus) === MAKEUP.PENDING).length;
 }
 
 // บวกวันแบบไม่พึ่ง Date object เพื่อเลี่ยงปัญหาเขตเวลา

@@ -145,6 +145,14 @@ const ROUTES = {
   // สรุปการเงิน — รวมรายรับรายจ่ายของศูนย์ ผู้ดูแลระบบเท่านั้น
   getLedger:       { roles: [ROLE.ADMIN], fn: (s, p) => getLedger(s, p) },
 
+  // Phase 7 — เช็กชื่อและคาบชดเชย
+  // ผู้ฝึกสอนเช็กชื่อคาบของตัวเองได้ แต่ตัดสินคาบที่ขาดเป็นงานของผู้ดูแลระบบ
+  getAttendanceBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getAttendanceBoard(s, p) },
+  getAlerts:          { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s)    => getAlerts(s) },
+  markAttendance:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => markAttendance(s, p) },
+  decideMakeup:       { roles: [ROLE.ADMIN], fn: (s, p) => decideMakeup(s, p) },
+  undoMakeup:         { roles: [ROLE.ADMIN], fn: (s, p) => undoMakeup(s, p) },
+
   // ผู้ใช้งานและผู้ฝึกสอน
   getUsers:        { roles: [ROLE.ADMIN], fn: (s)    => getUsers(s) },
   saveUser:        { roles: [ROLE.ADMIN], fn: (s, p) => saveUser(s, p) },

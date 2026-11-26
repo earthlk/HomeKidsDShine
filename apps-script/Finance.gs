@@ -75,12 +75,17 @@ function groupToClasses(rows, enrollMap, courseMap, childMap, trainerMap) {
         sessionIds:  [],
         payoutId:    String(s.payoutId || ''),
         fee:         feeFor(trainer, course),
+        // นับเด็กที่ไม่มาในคาบนี้ ไว้เตือนตอนจะจ่ายค่าสอน
+        // ถ้าไม่มากันทั้งคาบแปลว่าผู้สอนมารอเปล่า จ่ายหรือไม่จ่ายเป็นนโยบายของศูนย์
+        // ระบบไม่ตัดสินให้ แค่บอกให้เห็นก่อนกดจ่าย
+        absentCount: 0,
       };
     }
 
     const child = childMap[String(enr.childId)] || {};
     bucket[key].children.push(child.nickname || child.name || '');
     bucket[key].sessionIds.push(String(s.id));
+    if (String(s.attendance) === ATTENDANCE.ABSENT) bucket[key].absentCount++;
 
     // ปกติทุกแถวในคาบเดียวกันมี payoutId เท่ากัน แถวที่มีค่าถือเป็นตัวตัดสิน
     // เผื่อกรณีมีเด็กถูกเพิ่มเข้าคาบหลังปิดรอบไปแล้ว จะได้ไม่นับคาบนั้นซ้ำ
