@@ -2851,7 +2851,6 @@ button.crow:hover { background: var(--cream); }
   font-size: var(--t-xs);
   color: var(--ink-soft);
 }
-.ecard__guess { color: var(--mist); }
 .ecard__sub   { color: var(--coral); }
 
 .ecard__btns { display: flex; gap: var(--sp-2); flex-shrink: 0; }

@@ -223,14 +223,10 @@ const Activity = {
     return Math.round((b - a) / 86400000);
   },
 
+  // คำนวณจำนวนวันที่เดียว แล้วแปลงเป็นคำที่นี่
   daysLate(date) {
-    const today = UI.today();
-    if (date === today) return 'วันนี้';
-
-    const a = new Date(date + 'T00:00:00');
-    const b = new Date(today + 'T00:00:00');
-    const days = Math.round((b - a) / 86400000);
-
+    if (date === UI.today()) return 'วันนี้';
+    const days = this.lateDays(date);
     return days === 1 ? 'เมื่อวาน' : days + ' วัน';
   },
 

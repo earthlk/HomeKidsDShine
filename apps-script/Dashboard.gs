@@ -159,10 +159,10 @@ function adminBoard(sess, today) {
         n: noPrice, label: 'รายการที่ยังไม่ได้ตั้งราคา เก็บเงินไม่ได้จนกว่าจะตั้ง', tone: 'alert' },
       { id: 'due', page: 'income', tab: 'due', rank: 3,
         n: unpaid.length, label: 'รายการที่ยังเก็บเงินไม่ครบ', tone: 'warn',
-        sub: dueTotal ? 'รวม ' + money(dueTotal) + ' บาท' : '' },
+        sub: dueTotal ? 'รวม ' + Math.round(dueTotal).toLocaleString() + ' บาท' : '' },
       { id: 'payout', page: 'payouts', tab: 'due', rank: 4,
         n: payoutDue.length, label: 'รอบค่าสอนที่ยังไม่ได้จ่าย', tone: 'warn',
-        sub: payoutTotal ? 'รวม ' + money(payoutTotal) + ' บาท' : '' },
+        sub: payoutTotal ? 'รวม ' + Math.round(payoutTotal).toLocaleString() + ' บาท' : '' },
       { id: 'unbooked', page: 'courses', tab: 'active', rank: 6,
         n: unbookedKids, label: 'เด็กที่จ่ายเงินมาแล้วแต่ยังมีคาบที่ไม่ได้นัด', tone: 'warn',
         sub: unbooked ? 'รวม ' + unbooked + ' คาบ' : '' },
@@ -258,10 +258,4 @@ function parentBoard(sess, today) {
     })),
     dueTotal: due.reduce((s, r) => s + r.due, 0),
   };
-}
-
-// คั่นหลักพันแบบไม่พึ่ง toLocaleString ซึ่งบน Apps Script ให้ผลไม่แน่นอน
-function money(n) {
-  const s = String(Math.round(Number(n) || 0));
-  return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

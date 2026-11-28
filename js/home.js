@@ -146,7 +146,7 @@ const Home = {
       ${d.dueTotal ? `
         <section class="hsec">
           <button class="job job--warn" data-go="income">
-            <span class="job__n">${UI.esc(this.money(d.dueTotal))}</span>
+            <span class="job__n">${UI.money(d.dueTotal)}</span>
             <span class="job__b">
               <span class="job__t">ยอดค้างชำระ</span>
               <span class="job__s">${d.due.map(x =>
@@ -204,9 +204,5 @@ const Home = {
             </article>`).join('')}
         </div>
       </section>`;
-  },
-
-  money(n) {
-    return (Number(n) || 0).toLocaleString('th-TH');
   },
 };
