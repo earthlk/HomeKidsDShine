@@ -5,7 +5,9 @@
 //
 // ลำดับการรัน:
 //   1. createNewSpreadsheet()   → ได้ ID ชีตใหม่ เอาไปใส่ใน Config.gs
-//   2. createAdminUser()        → สร้างบัญชีผู้ดูแลระบบตัวแรก
+//   2. setupWizard()            → สร้างบัญชีผู้ดูแลระบบตัวแรกจากอีเมลของคุณเอง
+//   3. removeDefaultAdmin()     → ลบบัญชีทดสอบ admin@homeykids.com ทิ้ง
+//                                 รันหลังจากเข้าใช้งานด้วยบัญชีจริงได้แล้วเท่านั้น
 //
 // ============================================================
 
@@ -25,38 +27,115 @@ function createNewSpreadsheet() {
   Logger.log('URL: ' + ss.getUrl());
   Logger.log('');
   Logger.log('→ เอา ID ข้างบนไปใส่ในตัวแปร SPREADSHEET_ID ใน Config.gs');
-  Logger.log('→ แล้วรัน createAdminUser() ต่อ');
+  Logger.log('→ แล้วรัน setupWizard() ต่อ');
   Logger.log('════════════════════════════════════');
 }
 
 // ── ขั้นที่ 2: สร้างบัญชีผู้ดูแลระบบตัวแรก ──────────────────
-function createAdminUser() {
-  const EMAIL    = 'admin@homeykids.com';
-  const PASSWORD = 'Admin@1234';          // เปลี่ยนทันทีหลังเข้าใช้งานครั้งแรก
-  const NAME     = 'ผู้ดูแลระบบ';
+//
+// ปัญหาไก่กับไข่: ผู้ใช้ทุกคนอยู่ในชีต การจะเพิ่มผู้ใช้ต้องล็อกอินก่อน
+// แต่ยังไม่มีใครให้ล็อกอินเลย จึงต้องมีทางเข้าหนึ่งทางที่ไม่ผ่านหน้าเว็บ
+//
+// ทางนั้นคือตรงนี้ และใช้อีเมลของบัญชี Google ที่กดรันฟังก์ชันนี้
+// ไม่ใช่อีเมลสมมุติที่เขียนไว้ในโค้ด ด้วยเหตุผลสองข้อ
+//   1. คนที่เปิดโปรเจ็กต์ Apps Script นี้ได้ คือคนที่เข้าถึงชีตทั้งใบได้อยู่แล้ว
+//      การให้สิทธิ์ผู้ดูแลระบบกับคนคนนั้นจึงไม่ได้เพิ่มความเสี่ยงอะไรใหม่
+//   2. อีเมลจริงหมายความว่า "ลืมรหัสผ่าน" ใช้งานได้จริง
+//      อีเมลสมมุติไม่มีใครรับจดหมายได้ ถ้าลืมรหัสคือล็อกตัวเองออกถาวร
+//
+// ไม่ตั้งรหัสผ่านให้ ออกเป็นลิงก์ตั้งรหัสแบบเดียวกับที่เชิญผู้ใช้คนอื่น
+// เจ้าตัวตั้งรหัสเอง ระบบจึงไม่เคยมีรหัสผ่านที่ใครอื่นรู้มาก่อน
+function setupWizard() {
+  const email = String(Session.getEffectiveUser().getEmail() || '').trim().toLowerCase();
+  if (!email) {
+    throw new Error('อ่านอีเมลของบัญชีที่รันสคริปต์ไม่ได้ ' +
+      'ลองกดรันใหม่แล้วกดอนุญาตสิทธิ์ให้ครบ');
+  }
+  if (String(SITE_URL).indexOf('http') !== 0) {
+    throw new Error('ตั้งค่า SITE_URL ใน Config.gs ให้เป็นที่อยู่หน้าเว็บก่อน ' +
+      'ไม่งั้นลิงก์ตั้งรหัสผ่านจะพาไปผิดที่');
+  }
 
-  const existing = readAll(SHEET.USERS)
-    .find(u => String(u.email).toLowerCase() === EMAIL.toLowerCase());
-  if (existing) {
-    Logger.log('มีบัญชีนี้อยู่แล้ว: ' + EMAIL);
+  const all   = readAll(SHEET.USERS);
+  const admins = all.filter(u => u.role === ROLE.ADMIN && isTrue(u.active));
+  let   user   = all.find(u => String(u.email).trim().toLowerCase() === email);
+
+  if (user) {
+    // มีบัญชีอยู่แล้ว ยกระดับเป็นผู้ดูแลระบบและออกลิงก์ตั้งรหัสใหม่
+    // เส้นทางนี้คือทางออกตอนล็อกตัวเองออกจากระบบด้วย
+    updateRow(SHEET.USERS, { id: user.id, role: ROLE.ADMIN, active: true });
+    user = Object.assign({}, user, { role: ROLE.ADMIN, active: true });
+    Logger.log('อีเมลนี้มีบัญชีอยู่แล้ว ยกระดับเป็นผู้ดูแลระบบและออกลิงก์ตั้งรหัสใหม่');
+  } else {
+    user = insertRow(SHEET.USERS, {
+      email:    email,
+      password: '',
+      role:     ROLE.ADMIN,
+      name:     'ผู้ดูแลระบบ',
+      phone:    '',
+      active:   true,
+      lineUserId: '', googleId: '',
+      verified: false, inviteToken: '', inviteExpires: '',
+    });
+  }
+
+  const invite = issueInvite(user);
+
+  Logger.log('════════════════════════════════════');
+  Logger.log('บัญชีผู้ดูแลระบบ: ' + email);
+  Logger.log(invite.sent
+    ? 'ส่งลิงก์ตั้งรหัสผ่านไปที่อีเมลนี้แล้ว เปิดกล่องจดหมายได้เลย'
+    : 'ส่งอีเมลไม่สำเร็จ ใช้ลิงก์ข้างล่างนี้แทน');
+  Logger.log('ลิงก์ตั้งรหัสผ่าน: ' + invite.link);
+  Logger.log('ลิงก์หมดอายุ: ' + invite.expires);
+
+  if (admins.length) {
+    Logger.log('');
+    Logger.log('⚠ มีผู้ดูแลระบบอยู่ก่อนแล้ว ' + admins.length + ' บัญชี: ' +
+      admins.map(u => u.email).join(', '));
+  }
+  const fake = all.find(u =>
+    String(u.email).trim().toLowerCase() === 'admin@homeykids.com');
+  if (fake) {
+    Logger.log('');
+    Logger.log('⚠ ยังมีบัญชีทดสอบ admin@homeykids.com อยู่ ' +
+      'รหัสผ่านของบัญชีนี้เคยอยู่ในโค้ดที่เปิดสาธารณะ');
+    Logger.log('→ เข้าใช้งานด้วยบัญชีจริงให้ได้ก่อน แล้วรัน removeDefaultAdmin()');
+  }
+  Logger.log('════════════════════════════════════');
+}
+
+// ── ขั้นที่ 3: ลบบัญชีทดสอบทิ้ง ─────────────────────────────
+// แยกเป็นคนละฟังก์ชันโดยตั้งใจ ไม่ลบให้อัตโนมัติตอน setupWizard
+// เพราะถ้าลิงก์ตั้งรหัสไปไม่ถึงอีเมลจริง บัญชีทดสอบคือทางเข้าทางเดียวที่เหลือ
+// ต้องเข้าใช้งานด้วยบัญชีจริงให้สำเร็จก่อน ถึงจะทิ้งบันไดเส้นเก่าได้
+function removeDefaultAdmin() {
+  const EMAIL = 'admin@homeykids.com';
+  const all   = readAll(SHEET.USERS);
+  const fake  = all.find(u => String(u.email).trim().toLowerCase() === EMAIL);
+
+  if (!fake) {
+    Logger.log('ไม่มีบัญชี ' + EMAIL + ' อยู่แล้ว ไม่ต้องทำอะไร');
     return;
   }
 
-  // บัญชีแรกตั้งรหัสจากที่นี่ เพราะยังไม่มีใครเข้าไปกดสร้างบัญชีในระบบได้
-  // ถือว่ายืนยันแล้วตั้งแต่ต้น บัญชีที่สร้างต่อจากนี้ยืนยันทางอีเมลทั้งหมด
-  insertRow(SHEET.USERS, {
-    id: newId(), email: EMAIL, password: hashPassword(PASSWORD),
-    role: ROLE.ADMIN, name: NAME, phone: '', active: true,
-    lineUserId: '', googleId: '', createdAt: nowTH(), updatedAt: '',
-    verified: true, inviteToken: '', inviteExpires: '',
-  });
+  // ต้องเหลือผู้ดูแลระบบที่ "ล็อกอินได้จริง" ไม่ใช่แค่มีแถวอยู่ในชีต
+  // บัญชีที่สร้างจาก setupWizard แล้วยังไม่ได้กดลิงก์ตั้งรหัส จะไม่มีรหัสผ่าน
+  // ถ้านับบัญชีแบบนั้นว่าใช้ได้ แล้วลบบัญชีทดสอบทิ้ง คือล็อกตัวเองออกทั้งระบบ
+  const others = all.filter(u =>
+    u.role === ROLE.ADMIN && isTrue(u.active) &&
+    String(u.password || '').trim() && String(u.id) !== String(fake.id));
 
-  Logger.log('════════════════════════════════════');
-  Logger.log('สร้างบัญชีผู้ดูแลระบบแล้ว');
-  Logger.log('อีเมล: ' + EMAIL);
-  Logger.log('รหัสผ่าน: ' + PASSWORD);
-  Logger.log('→ เปลี่ยนรหัสผ่านทันทีหลังเข้าใช้งานครั้งแรก');
-  Logger.log('════════════════════════════════════');
+  if (!others.length) {
+    throw new Error('ลบไม่ได้ เพราะจะไม่เหลือผู้ดูแลระบบที่เข้าใช้งานได้เลย ' +
+      'รัน setupWizard() กดลิงก์ตั้งรหัสผ่าน และเข้าสู่ระบบให้สำเร็จก่อน');
+  }
+
+  revokeSessions(fake.id);
+  deleteRow(SHEET.USERS, fake.id);
+
+  Logger.log('ลบบัญชีทดสอบ ' + EMAIL + ' แล้ว');
+  Logger.log('ผู้ดูแลระบบที่เหลือ: ' + others.map(u => u.email).join(', '));
 }
 
 // ── เติมคอลัมน์ที่ขาด ───────────────────────────────────────
