@@ -110,6 +110,7 @@ const ROUTES = {
   toggleCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => toggleCourse(s, p) },
   removeCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => removeCourse(s, p) },
   saveEnrollment:       { roles: [ROLE.ADMIN], fn: (s, p) => saveEnrollment(s, p) },
+  setEnrollmentTrainer: { roles: [ROLE.ADMIN], fn: (s, p) => setEnrollmentTrainer(s, p) },
   closeEnrollment:      { roles: [ROLE.ADMIN], fn: (s, p) => closeEnrollment(s, p) },
   removeEnrollment:     { roles: [ROLE.ADMIN], fn: (s, p) => removeEnrollment(s, p) },
 

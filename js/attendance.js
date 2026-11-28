@@ -13,13 +13,18 @@
 //
 // ส่วนการตัดสินคาบที่ขาดเปิดกล่อง เพราะมีผลต่อจำนวนคาบที่ผู้ปกครองจ่ายเงินมา
 // และต้องเลือกจากสามทางที่ให้ผลต่างกัน ไม่ใช่งานที่ควรกดพลาดได้
+//
+// ผู้ฝึกสอนเห็นสองแท็บ ผู้ดูแลระบบเห็นสามแท็บ
+// เพราะผู้ฝึกสอนกดอะไรไม่ได้เลยทั้งในรอตัดสินและตัดสินแล้ว
+// สองแท็บที่กดไม่ได้เรียงกันคือ noise สำหรับคนที่เข้าหน้านี้วันละหลายรอบ
+// จึงยุบเป็นแท็บประวัติอันเดียว ส่วนจำนวนที่รอตัดสินยังเห็นได้ที่แถบบนสุด
 // ============================================================
 
 const Attend = {
 
   board: null,
-  tab:   'unchecked',   // unchecked = ค้างเช็ก | pending = รอตัดสิน | decided = ตัดสินแล้ว
-  query: '',
+  tab:   'unchecked',   // unchecked = ค้างเช็ก | pending = รอตัดสิน
+  query: '',            // decided = ตัดสินแล้ว | history = รวมสองอันหลัง (ผู้ฝึกสอน)
 
   MARK: {
     present: 'มา',
@@ -74,10 +79,9 @@ const Attend = {
 
       <div class="ftools">
         <div class="chipbar chipbar--tabs">
-          ${[['unchecked', 'ค้างเช็ก'], ['pending', 'รอตัดสิน'], ['decided', 'ตัดสินแล้ว']]
-            .map(([v, label]) => `<button class="chipbtn${this.tab === v ? ' is-on' : ''}"
+          ${this.tabs().map(([v, label]) => `<button class="chipbtn${this.tab === v ? ' is-on' : ''}"
               data-atab="${v}">${label}
-              <span class="chipbtn__n">${(b[v] || []).length}</span></button>`).join('')}
+              <span class="chipbtn__n">${this.listOf(v).length}</span></button>`).join('')}
         </div>
         ${b.isTrainer ? '' : `
           <div class="ftools__right">
@@ -107,8 +111,22 @@ const Attend = {
     this.paintList();
   },
 
+  tabs() {
+    return this.board.isTrainer
+      ? [['unchecked', 'ค้างเช็ก'], ['history', 'ประวัติ']]
+      : [['unchecked', 'ค้างเช็ก'], ['pending', 'รอตัดสิน'], ['decided', 'ตัดสินแล้ว']];
+  },
+
+  // ประวัติของผู้ฝึกสอน = รอตัดสิน + ตัดสินแล้ว เรียงวันใหม่ขึ้นก่อน
+  listOf(tab) {
+    if (!this.board) return [];
+    if (tab !== 'history') return this.board[tab] || [];
+    return (this.board.pending || []).concat(this.board.decided || [])
+      .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  },
+
   rows() {
-    const list = (this.board && this.board[this.tab]) || [];
+    const list = this.listOf(this.tab);
     const q = this.query.trim().toLowerCase();
     if (!q) return list;
     return list.filter(r => [r.childName, r.childFull, r.courseName, r.trainerName]
@@ -150,9 +168,11 @@ const Attend = {
     }
     if (tab === 'pending') {
       return UI.empty('ไม่มีคาบรอตัดสิน',
-        this.board.isTrainer
-          ? 'คาบที่เด็กขาดเรียนจะขึ้นที่นี่ ผู้ดูแลระบบเป็นคนตัดสินว่าจะคืนคาบหรือตัดคาบ'
-          : 'เมื่อมีเด็กขาดเรียน คาบนั้นจะมารออยู่ที่นี่ให้เลือกว่าจะทำยังไง');
+        'เมื่อมีเด็กขาดเรียน คาบนั้นจะมารออยู่ที่นี่ให้เลือกว่าจะทำยังไง');
+    }
+    if (tab === 'history') {
+      return UI.empty('ยังไม่มีคาบที่ขาด',
+        'คาบที่เช็กว่าขาดจะเก็บไว้ที่นี่ พร้อมผลว่าผู้ดูแลระบบตัดสินยังไง');
     }
     return UI.empty('ยังไม่มีประวัติการตัดสิน',
       'คาบที่ตัดสินไปแล้วจะเก็บไว้ที่นี่ ย้อนกลับได้ถ้าเลือกผิด');
@@ -169,6 +189,10 @@ const Attend = {
             <small>${UI.esc(r.courseName)}${
               admin && r.trainerName ? ' · ' + UI.esc(r.trainerName) : ''}${
               r.makeupOfId ? ' · คาบชดเชย' : ''}</small>
+            ${/* อาการแพ้และโรคประจำตัวต้องอยู่ตรงนี้ ไม่ใช่ให้ไปเปิดหน้าเด็กเอง
+                 คนเช็กชื่อคือคนที่ยืนอยู่กับเด็ก และเป็นจังหวะเดียวที่ได้มองรายชื่อ */
+              (r.alerts || []).length
+                ? `<small class="warn">${UI.esc(r.alerts.join(' · '))}</small>` : ''}
           </span>
           <span class="irow__num">
             <b class="irow__when">${UI.esc(UI.thaiDate(r.date, 'short'))}</b>
@@ -189,11 +213,17 @@ const Attend = {
       </span>`;
     }
 
-    // รอตัดสิน — ผู้ฝึกสอนดูได้อย่างเดียว
+    // รอตัดสิน — ผู้ดูแลระบบเท่านั้นที่เข้าแท็บนี้ได้
     if (this.tab === 'pending') {
-      return admin
-        ? `<button class="irow__act irow__act--go" data-decide="${UI.esc(r.id)}">ตัดสิน</button>`
-        : '<span class="irow__tag">รอผู้ดูแลระบบ</span>';
+      return `<button class="irow__act irow__act--go" data-decide="${UI.esc(r.id)}">ตัดสิน</button>`;
+    }
+
+    // ประวัติของผู้ฝึกสอน — ยังไม่ตัดสินกับตัดสินแล้วปนกัน แยกด้วยป้าย
+    if (this.tab === 'history') {
+      return `<span class="irow__tag">${
+        r.makeupStatus && this.RESULT[r.makeupStatus]
+          ? UI.esc(this.RESULT[r.makeupStatus])
+          : 'รอผู้ดูแลระบบ'}</span>`;
     }
 
     // ตัดสินแล้ว
@@ -223,7 +253,9 @@ const Attend = {
 
     await this.reload();
     UI.toast(value === 'absent'
-      ? 'บันทึกว่า' + name + 'ขาดเรียน ไปเลือกวิธีจัดการได้ที่แท็บรอตัดสิน'
+      ? (this.board.isTrainer
+          ? 'บันทึกว่า' + name + 'ขาดเรียน ผู้ดูแลระบบจะเป็นคนเลือกว่าจะคืนคาบหรือตัดคาบ'
+          : 'บันทึกว่า' + name + 'ขาดเรียน ไปเลือกวิธีจัดการได้ที่แท็บรอตัดสิน')
       : 'บันทึกว่า' + name + this.MARK[value] + 'แล้ว');
   },
 

@@ -1322,6 +1322,8 @@ textarea.field__input { resize: vertical; min-height: 62px; }
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  /* การ์ดมีได้ถึงสองปุ่ม ถ้าไม่ยอมให้ตกบรรทัด วันที่จะถูกบีบจนขึ้นบรรทัดกลางคำ */
+  flex-wrap: wrap;
 }
 .ecard__bottom .ecard__foot { flex: 1; min-width: 0; }
 
@@ -2733,3 +2735,273 @@ button.crow:hover { background: var(--cream); }
   .markset { padding: 0 var(--sp-3); }
   .markbtn { flex: 1 1 0; }
 }
+
+/* ============================================================
+   Phase 8 — เช็กชื่อในฟอร์มบันทึกกิจกรรม
+   ============================================================ */
+
+/* สถานะเลือกแล้วของปุ่มเช็กชื่อ ใช้ในฟอร์มบันทึกกิจกรรม
+   ที่หน้าเช็กชื่อปุ่มเป็นคำสั่งกดครั้งเดียวจบ จึงไม่มีสถานะนี้
+   แต่ในฟอร์มมันคือค่าที่ยังแก้ได้จนกว่าจะกดบันทึก ต้องเห็นว่าเลือกอะไรอยู่ */
+.markbtn.is-on { font-weight: 600; }
+.markbtn--present.is-on { background: var(--sage-tint);  border-color: var(--sage);  color: var(--sage); }
+.markbtn--late.is-on    { background: var(--honey-tint); border-color: var(--honey); color: var(--honey); }
+.markbtn--absent.is-on  { background: var(--coral-tint); border-color: var(--coral); color: var(--coral); }
+
+.markset--sm .markbtn { padding: 4px 10px; }
+
+.kidblock__att {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.kidblock__attk {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+/* ============================================================
+   Phase 8 — หน้าเด็กและผู้ปกครอง
+   ============================================================ */
+
+/* ── หัวข้อกลุ่มตามช่วงอายุ ─────────────────────────────────── */
+/* เป็นหัวข้อ ไม่ใช่การ์ด จึงไม่มีกรอบและไม่มีพื้นหลัง
+   เส้นคั่นบาง ๆ พอให้ตาหยุดได้โดยไม่แย่งความสนใจจากการ์ดข้างล่าง */
+.pgroup + .pgroup { margin-top: var(--sp-6); }
+.pgroup__h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.pgroup__n { font-weight: 400; color: var(--mist); }
+
+.chipbar--bands { margin-bottom: var(--sp-4); }
+
+/* ── แถบคอร์สบนการ์ดเด็ก ───────────────────────────────────── */
+/* วางไว้บนสุดของเนื้อการ์ด ใต้ชื่อ เพราะเป็นสิ่งที่คนเปิดหน้านี้มาดู
+   ตัวเลขอยู่ขวาของชื่อคอร์ส ไม่ใช่ใต้แถบ จะได้อ่านชื่อกับยอดในสายตาเดียว */
+.pcard__prog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.prog { display: flex; flex-direction: column; gap: 5px; }
+.prog__k {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--t-xs);
+}
+.prog__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.prog__n {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.prog__more { margin: 0; font-size: var(--t-xs); color: var(--mist); }
+
+.pcard__none {
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+
+@media (max-width: 720px) {
+  /* ช่วงอายุมีได้ถึงหกปุ่ม ถ้าปล่อยให้ตกบรรทัดจะกินจอทั้งจอก่อนถึงการ์ดใบแรก
+     ให้เลื่อนข้างแทน แล้วดึงขอบออกไปชนขอบจอ จะได้เห็นว่ายังมีต่อ */
+  .chipbar--bands {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-left: calc(var(--sp-5) * -1);
+    margin-right: calc(var(--sp-5) * -1);
+    padding-left: var(--sp-5);
+    padding-right: var(--sp-5);
+  }
+  .chipbar--bands::-webkit-scrollbar { display: none; }
+  .chipbar--bands .chipbtn { flex-shrink: 0; }
+}
+
+/* ============================================================
+   Phase 8 — หน้าคอร์ส ผู้สอนประจำและมุมมองตามผู้สอน
+   ============================================================ */
+
+/* บรรทัดผู้สอนใต้ชื่อคอร์สในการ์ดการลงทะเบียน
+   เป็นข้อมูลระดับเดียวกับชื่อคอร์ส ไม่ใช่ป้าย จึงเป็นข้อความธรรมดา */
+.ecard__trainer {
+  margin: 2px 0 0;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.ecard__guess { color: var(--mist); }
+.ecard__sub   { color: var(--coral); }
+
+.ecard__btns { display: flex; gap: var(--sp-2); flex-shrink: 0; }
+
+/* รายการคอร์สของผู้สอนหนึ่งคน */
+.tlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ccard__who {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 720px) {
+  /* ปุ่มสองปุ่มกับบรรทัดสรุปอยู่บรรทัดเดียวกันไม่พอบนจอแคบ */
+  .ecard__bottom { flex-wrap: wrap; }
+  .ecard__btns { width: 100%; }
+  .ecard__btns .btn { flex: 1 1 0; }
+}
+
+/* ============================================================
+   Phase 8 — คิวงานแบบคอลัมน์จริง
+   ใช้ในหน้าบันทึกกิจกรรม และเผื่อหน้าอื่นที่เป็นคิวงานเหมือนกัน
+   ============================================================ */
+
+/* จำกัดความกว้างไว้ ไม่ให้แถวยืดเต็มจอ
+   ข้อความห้าสิบตัวอักษรในแถวกว้างพันหกร้อยพิกเซลอ่านยากกว่าที่คิด
+   เพราะตาต้องกระโดดข้ามที่ว่างระหว่างคอลัมน์ */
+.qlist { max-width: 1180px; }
+
+.qhead, .qln {
+  display: grid;
+  grid-template-columns:
+    64px minmax(150px, 1.3fr) minmax(150px, 1.7fr)
+    minmax(90px, 0.9fr) 92px 84px;
+  gap: var(--sp-3);
+  align-items: center;
+}
+.qhead--p, .qln--p {
+  grid-template-columns: 96px minmax(150px, 1.4fr) minmax(110px, 1fr) 110px 70px;
+}
+
+.qhead {
+  padding: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+
+.qln {
+  width: 100%;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: var(--t-sm);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.qln:hover { border-color: var(--clay); }
+
+.qln__c { min-width: 0; display: block; }
+.qln__c--strong { font-weight: 500; }
+.qln__c small {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.qln__c--late { color: var(--coral); }
+
+.qln__time b {
+  display: block;
+  font-family: var(--font-head);
+  font-weight: 500;
+}
+.qln__time small { color: var(--mist); }
+
+.qln__n {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--cream);
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.qln__stars { color: var(--honey); letter-spacing: 1px; }
+
+.qln__go {
+  justify-self: end;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.qln:hover .qln__go { border-color: var(--clay); color: var(--clay); }
+
+/* ข้อควรระวังต้องอยู่ติดชื่อเด็ก และไม่พึ่งสีอย่างเดียว
+   จึงมีจุดนำหน้าด้วย คนที่แยกสีไม่ออกก็ยังเห็นว่าแถวนี้มีอะไรต่าง */
+.warn { color: var(--coral); }
+.warn::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  margin-bottom: 1px;
+  border-radius: 99px;
+  background: var(--coral);
+  vertical-align: middle;
+}
+
+@media (max-width: 860px) {
+  /* จอแคบพับเป็นสามบรรทัด ไม่ใช่หกบรรทัด
+     บรรทัดบนคือสิ่งที่ใช้เลือกว่าจะกดอันไหน เวลา คอร์ส และปุ่ม
+     บรรทัดกลางคือเด็กกับข้อควรระวัง บรรทัดล่างคือรายละเอียดที่เหลือเรียงคู่กัน
+     ถ้าปล่อยให้แต่ละคอลัมน์ขึ้นบรรทัดของตัวเอง แถวเดียวจะสูงเท่าครึ่งจอ */
+  .qhead { display: none; }
+  .qln {
+    grid-template-columns: 56px 1fr auto;
+    row-gap: 6px;
+  }
+  .qln__c:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .qln__c:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .qln__go           { grid-column: 3; grid-row: 1; align-self: start; }
+  .qln__c:nth-child(3) { grid-column: 2 / 4; grid-row: 2; }
+  .qln__c:nth-child(4) { grid-column: 2;     grid-row: 3; }
+  .qln__c:nth-child(5) { grid-column: 3;     grid-row: 3; justify-self: end; }
+  .qln__c:nth-child(4),
+  .qln__c:nth-child(5) { font-size: var(--t-xs); color: var(--ink-soft); }
+
+  .qln--p { grid-template-columns: 1fr auto; }
+  .qln--p .qln__c:nth-child(1) { grid-column: 1; grid-row: 1;
+    font-size: var(--t-xs); color: var(--ink-soft); }
+  .qln--p .qln__c:nth-child(2) { grid-column: 1 / 3; grid-row: 2; }
+  .qln--p .qln__c:nth-child(3) { grid-column: 1; grid-row: 3; }
+  .qln--p .qln__c:nth-child(4) { grid-column: 2; grid-row: 3; justify-self: end; }
+  .qln--p .qln__go { grid-column: 2; grid-row: 1; justify-self: end; }
+}
+.qln__c--soon { color: var(--honey); }
+
+/* .warn ต้องชนะสีของ small ในแถว ไม่งั้นข้อความเตือนจะกลายเป็นสีจาง */
+.irow__who small.warn { color: var(--coral); }

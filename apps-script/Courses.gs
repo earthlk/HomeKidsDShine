@@ -12,6 +12,28 @@
 //
 // ============================================================
 
+// ── ผู้สอนประจำของการลงทะเบียนหนึ่งรายการ ───────────────────
+// ผู้สอนไม่ได้ผูกกับคอร์ส เพราะคอร์สเดียวกันเด็กคนละคนอาจคนละครู
+// รายการที่ลงทะเบียนไว้ก่อนมีคอลัมน์นี้จะว่าง จึงอนุมานจากคาบที่ลงไว้
+// เอาคนที่สอนให้เด็กคนนี้มากที่สุด ค่าที่อนุมานมาไม่เขียนกลับลงชีต
+// เพราะถ้าเขียนกลับ การเดาจะกลายเป็นข้อมูลที่ดูเหมือนมีคนกำหนดไว้จริง
+function mainTrainerOf(enroll, rows) {
+  if (enroll.trainerId) return String(enroll.trainerId);
+
+  const tally = {};
+  let best = '';
+  let bestN = 0;
+
+  rows.forEach(s => {
+    const t = String(s.trainerId || '');
+    if (!t || s.status === SESSION_STATUS.CANCELLED) return;
+    tally[t] = (tally[t] || 0) + 1;
+    if (tally[t] > bestN) { bestN = tally[t]; best = t; }
+  });
+
+  return best;
+}
+
 // ── ข้อมูลหน้าคอร์สทั้งหมดในครั้งเดียว ──────────────────────
 // รวมประวัติการฝึกของทุกรายการมาด้วยเลย เพื่อให้กดดูประวัติแล้วขึ้นทันที
 // ไม่ต้องยิงคำขอไปหลังบ้านใหม่ซึ่งใช้เวลาหนึ่งถึงสามวินาทีต่อครั้ง
@@ -78,6 +100,11 @@ function getCourseBoard(sess) {
     // และยอดค่าสอนที่จ่ายไปแล้วจะกลายเป็นข้อมูลลอยที่หาต้นทางไม่เจอ
     const closed = String(e.status) === 'closed';
 
+    // ผู้สอนประจำ และจำนวนคาบที่คนอื่นสอนแทน
+    const mainT = mainTrainerOf(e, mine);
+    const subs  = mine.filter(s => s.trainerId && s.status !== SESSION_STATUS.CANCELLED
+                                   && String(s.trainerId) !== mainT).length;
+
     // ประวัติการฝึก เรียงตามวันจากเก่าไปใหม่ ให้อ่านเป็นลำดับพัฒนาการ
     const history = mine.map(s => {
       const trainer = trainerMap[String(s.trainerId)] || {};
@@ -128,6 +155,11 @@ function getCourseBoard(sess) {
                        ? (Number(course.price) || 0) : (Number(e.price) || 0),
       coursePrice:   Number(course.price) || 0,
       trainerFee:    Number(course.trainerFee) || 0,
+      // ผู้สอนประจำ trainerSet บอกว่ากำหนดไว้จริงหรือระบบอนุมานให้
+      trainerId:     mainT,
+      trainerName:   (trainerMap[mainT] || {}).name || '',
+      trainerSet:    !!e.trainerId,
+      subCount:      subs,
       history:       history,
     };
   });
@@ -230,18 +262,111 @@ function getCourseBoard(sess) {
     enrollCount[k] = (enrollCount[k] || 0) + 1;
   });
 
-  const catalog = courses.map(c => Object.assign({}, c, {
-    active:        isTrue(c.active),
-    price:         Number(c.price) || 0,
-    trainerFee:    Number(c.trainerFee) || 0,
-    totalSessions: Number(c.totalSessions) || 0,
-    durationMin:   Number(c.durationMin) || 0,
-    enrolled:      enrollCount[String(c.id)] || 0,
-  }));
+  // ── สรุปรายคอร์ส ────────────────────────────────────────
+  // หน้าคอร์สต้องอ่านออกโดยไม่ต้องเทียบตัวเลขเอง จึงรวมความคืบหน้า
+  // ของเด็กทุกคนในคอร์สมาเป็นตัวเดียว และบอกว่าใครสอนคอร์สนี้อยู่บ้าง
+  // รายการที่ปิดแล้วไม่นับเป็นภาระงาน แต่ยังนับใน kids รวม
+  const agg = {};
+  const bag = (map, key, seed) => (map[key] || (map[key] = seed));
+
+  rows.forEach(r => {
+    const a = bag(agg, String(r.courseId),
+      { kids: 0, activeKids: 0, done: 0, total: 0, trainers: {} });
+
+    a.kids++;
+    a.done  += r.done;
+    a.total += r.totalSessions;
+    if (r.state !== 'active') return;
+
+    a.activeKids++;
+    const t = bag(a.trainers, String(r.trainerId || ''),
+      { id: r.trainerId || '', name: r.trainerName || '', kids: 0, done: 0, total: 0 });
+    t.kids++;
+    t.done  += r.done;
+    t.total += r.totalSessions;
+  });
+
+  const catalog = courses.map(c => {
+    const a = agg[String(c.id)] ||
+      { kids: 0, activeKids: 0, done: 0, total: 0, trainers: {} };
+
+    return Object.assign({}, c, {
+      active:        isTrue(c.active),
+      price:         Number(c.price) || 0,
+      trainerFee:    Number(c.trainerFee) || 0,
+      totalSessions: Number(c.totalSessions) || 0,
+      durationMin:   Number(c.durationMin) || 0,
+      enrolled:      enrollCount[String(c.id)] || 0,
+      activeKids:    a.activeKids,
+      doneSessions:  a.done,
+      totalPlanned:  a.total,
+      trainers:      Object.keys(a.trainers).map(k => a.trainers[k])
+                       .sort((x, y) => y.kids - x.kids),
+    });
+  });
+
+  // ── สรุปรายผู้สอน ───────────────────────────────────────
+  // ผู้ดูแลต้องมองออกว่าใครงานล้นใครยังว่าง ก่อนจะแบ่งงานรอบถัดไป
+  // ดูที่ภาระที่ยังเหลือ ไม่ใช่ยอดสะสมทั้งชีวิต คาบที่นัดไว้ข้างหน้าจึงสำคัญสุด
+  const upcoming = {};
+  const today    = todayTH();
+  sessions.forEach(s => {
+    if (s.status !== SESSION_STATUS.SCHEDULED) return;
+    if (String(s.date) < today) return;
+    const k = String(s.trainerId || '');
+    upcoming[k] = (upcoming[k] || 0) + 1;
+  });
+
+  const load = {};
+  rows.forEach(r => {
+    if (r.state !== 'active') return;
+    const a = bag(load, String(r.trainerId || ''),
+      { id: r.trainerId || '', name: r.trainerName || '',
+        kids: 0, done: 0, total: 0, courses: {} });
+
+    a.kids++;
+    a.done  += r.done;
+    a.total += r.totalSessions;
+
+    const c = bag(a.courses, String(r.courseId),
+      { id: r.courseId, name: r.courseName, kids: 0, done: 0, total: 0 });
+    c.kids++;
+    c.done  += r.done;
+    c.total += r.totalSessions;
+  });
+
+  // ผู้สอนที่ยังไม่มีงานเลยต้องขึ้นด้วย ไม่งั้นจะมองไม่เห็นคนที่ว่าง
+  trainers.forEach(t => {
+    if (!isTrue(t.active)) return;
+    bag(load, String(t.id),
+      { id: t.id, name: t.name, kids: 0, done: 0, total: 0, courses: {} });
+  });
+
+  const byTrainer = Object.keys(load).map(k => {
+    const a = load[k];
+    return {
+      id:       a.id,
+      name:     a.name || (trainerMap[k] || {}).name || 'ยังไม่ได้กำหนดผู้สอน',
+      assigned: !!a.id,
+      kids:     a.kids,
+      done:     a.done,
+      total:    a.total,
+      upcoming: upcoming[k] || 0,
+      courses:  Object.keys(a.courses).map(x => a.courses[x])
+                  .sort((x, y) => y.kids - x.kids),
+    };
+  }).sort((a, b) =>
+    // กองที่ยังไม่ได้กำหนดผู้สอนไปอยู่ท้ายสุดเสมอ มันไม่ใช่คน เป็นของค้าง
+    (Number(a.assigned === false) - Number(b.assigned === false)) ||
+    (b.kids - a.kids) ||
+    String(a.name).localeCompare(String(b.name), 'th'));
 
   return {
     courses:     catalog,
     enrollments: rows,
+    byTrainer:   byTrainer,
+    trainers:    trainers.filter(t => isTrue(t.active))
+                   .map(t => ({ id: t.id, name: t.name })),
     children:    children.map(c => ({ id: c.id, name: c.name, nickname: c.nickname })),
     canEdit:     true,
     mode:        'admin',
@@ -476,4 +601,64 @@ function removeEnrollment(sess, p) {
   deleteRow(SHEET.ENROLLMENTS, p.id);
   audit(sess.userId, 'DELETE', 'enrollment', p.id);
   return { success: true };
+}
+
+// ── เปลี่ยนผู้สอนประจำ ──────────────────────────────────────
+// สองสถานการณ์ที่ต่างกันมาก จึงต้องแยกให้ชัดว่ากำลังทำอันไหน
+//
+//   สอนแทนครั้งเดียว  แก้ผู้สอนที่คาบนั้นคาบเดียวในหน้าตารางนัด
+//                     ผู้สอนประจำไม่เปลี่ยน คาบนั้นจะติดป้ายว่าสอนแทน
+//                     และค่าสอนของคาบนั้นเข้ากระเป๋าคนที่สอนจริง
+//
+//   เปลี่ยนทั้งคอร์ส  มาที่นี่ เปลี่ยนผู้สอนประจำของการลงทะเบียน
+//                     แล้วเลือกได้ว่าจะย้ายคาบที่นัดไว้ข้างหน้าตามไปด้วยไหม
+//
+// คาบที่สอนไปแล้วไม่แตะเด็ดขาด เพราะเป็นประวัติและผูกกับค่าสอนที่จ่ายไปแล้ว
+function setEnrollmentTrainer(sess, p) {
+  const ids = [].concat(p.enrollmentIds || (p.enrollmentId ? [p.enrollmentId] : []));
+  if (!ids.length) throw new Error('ไม่รู้ว่าจะเปลี่ยนผู้สอนของรายการไหน');
+
+  const trainerId = String(p.trainerId || '').trim();
+  if (!trainerId) throw new Error('เลือกผู้สอนก่อน');
+
+  const trainer = readOne(SHEET.TRAINERS, trainerId);
+  if (!trainer) throw new Error('ไม่พบผู้ฝึกสอน');
+  if (!isTrue(trainer.active)) throw new Error('ผู้ฝึกสอนคนนี้ถูกปิดการใช้งานอยู่');
+
+  const today   = todayTH();
+  const moveAll = !!p.applyFuture;
+
+  let changed = 0;
+  let moved   = 0;
+  const skipped = [];
+
+  ids.forEach(id => {
+    const enr = readOne(SHEET.ENROLLMENTS, id);
+    if (!enr) throw new Error('ไม่พบรายการลงทะเบียน');
+
+    updateRow(SHEET.ENROLLMENTS, { id: id, trainerId: trainerId });
+    changed++;
+
+    if (!moveAll) return;
+
+    // ย้ายเฉพาะคาบที่ยังไม่ถึงและยังไม่ยกเลิก
+    // คาบที่ชนตารางของผู้สอนใหม่จะข้ามไป แล้วรายงานกลับให้คนสั่งรู้
+    // ดีกว่าล้มทั้งคำสั่ง เพราะคาบที่เหลือย้ายได้ควรได้ย้าย
+    readAll(SHEET.SESSIONS)
+      .filter(s => String(s.enrollmentId) === String(id) &&
+                   s.status === SESSION_STATUS.SCHEDULED &&
+                   String(s.date) >= today &&
+                   String(s.trainerId) !== trainerId)
+      .forEach(s => {
+        const next  = Object.assign({}, s, { trainerId: trainerId });
+        const clash = checkConflict(next, s.id);
+        if (clash) { skipped.push({ date: s.date, time: s.startTime, why: clash }); return; }
+
+        updateRow(SHEET.SESSIONS, { id: s.id, trainerId: trainerId });
+        moved++;
+      });
+  });
+
+  audit(sess.userId, 'SET_TRAINER', 'enrollment', ids.join(','));
+  return { changed: changed, moved: moved, skipped: skipped, trainerName: trainer.name };
 }

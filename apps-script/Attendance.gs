@@ -72,6 +72,9 @@ function getAttendanceBoard(sess, p) {
       enrollmentId: s.enrollmentId,
       childName:   child.nickname || child.name || '',
       childFull:   child.name || '',
+      // ข้อควรระวังต้องมากับแถวเช็กชื่อด้วย ไม่ใช่มีแค่ในหน้าเด็ก
+      // คนที่ยืนอยู่หน้าเด็กตอนเช็กชื่อคือคนที่ต้องรู้ว่าแพ้อะไร
+      alerts:      childAlerts(child),
       courseName:  course.name || '',
       trainerId:   s.trainerId,
       trainerName: t.name || '',
