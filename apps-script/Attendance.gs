@@ -29,7 +29,13 @@ function attendanceState(row, today) {
   }
   if (att) return 'checked';
 
-  // ยังไม่มีใครเช็ก ถ้าวันผ่านไปแล้วถือว่าค้างเช็ก
+  // คาบของวันนี้ที่ยังไม่เช็ก เป็นคนละเรื่องกับคาบที่ค้างมาจากวันก่อน
+  // ของวันนี้คือใบรายชื่อที่กำลังจะใช้ ของเมื่อวานคือของที่ลืมไปแล้ว
+  //
+  // เดิมของวันนี้ตกไปอยู่ใน upcoming ซึ่งไม่ขึ้นที่หน้าเช็กชื่อเลย
+  // แปลว่าครูสอนเสร็จตอนเที่ยงต้องรอถึงพรุ่งนี้ถึงจะเช็กได้
+  // ซึ่งพรุ่งนี้คือตอนที่จำไม่ได้แล้วว่าใครมาใครไม่มา
+  if (String(row.date) === String(today)) return 'today';
   return String(row.date) < String(today) ? 'unchecked' : 'upcoming';
 }
 
@@ -92,6 +98,10 @@ function getAttendanceBoard(sess, p) {
   return {
     isTrainer: sess.role === ROLE.TRAINER,
     today:     today,
+    // คาบของวันนี้แยกกองไว้ แต่หน้าจอเอาไปแสดงรวมกับค้างเช็กในแท็บเดียว
+    // ไม่ทำเป็นแท็บใหม่ เพราะคนที่เปิดหน้านี้มาต้องการเช็กชื่อ
+    // ไม่ได้ต้องการเลือกก่อนว่าจะเช็กของวันไหน
+    todayRows: pick('today'),
     pending:   pick('pending'),
     unchecked: pick('unchecked'),
     decided:   decided,
@@ -106,9 +116,10 @@ function getAttendanceBoard(sess, p) {
 function getAlerts(sess) {
   const board = getAttendanceBoard(sess, {});
   if (board.noProfile) return { pending: 0, unchecked: 0 };
+  // ป้ายบนเมนูนับของวันนี้ด้วย เพราะเป็นงานที่ต้องทำวันนี้เหมือนกัน
   return {
     pending:   board.pending.length,
-    unchecked: board.unchecked.length,
+    unchecked: board.unchecked.length + board.todayRows.length,
   };
 }
 

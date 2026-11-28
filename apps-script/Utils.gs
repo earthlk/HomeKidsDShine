@@ -76,7 +76,35 @@ function newId() {
 }
 
 // ── อ่านทั้งชีตเป็น array ของ object ────────────────────────
+// ── แคชภายในคำขอเดียว ───────────────────────────────────────
+// หน้าภาพรวมเรียกฟังก์ชันของหลายหน้ามารวมกัน เพื่อให้ตัวเลขตรงกับ
+// หน้าจริงเป๊ะ ๆ แทนที่จะคำนวณใหม่เองแล้วเสี่ยงให้สองที่ตอบไม่ตรงกัน
+// แลกมาด้วยการอ่านชีตเดิมซ้ำหลายรอบในคำขอเดียว ซึ่งช้ามากบน Apps Script
+//
+// ภายในคำขอเดียวชีตเปลี่ยนเองไม่ได้ จึงจำผลไว้ได้อย่างปลอดภัย
+// ขอแค่ล้างทิ้งทุกครั้งที่มีการเขียน ซึ่งทำไว้ใน insertRow/updateRow/deleteRow แล้ว
+// แคชอยู่แค่ในหน่วยความจำของคำขอนี้ จบคำขอก็หายไปพร้อมกัน
+var SHEET_CACHE = {};
+
+function clearSheetCache(name) {
+  if (name) delete SHEET_CACHE[name];
+  else SHEET_CACHE = {};
+}
+
 function readAll(sheetName) {
+  if (SHEET_CACHE[sheetName]) {
+    // คืนสำเนาตื้น ๆ ของอาร์เรย์ กันคนเรียกไป sort ทับของเดิม
+    // ตัวแถวยังเป็นก้อนเดียวกัน คนที่แก้ object จึงยังกระทบกัน
+    // แต่โค้ดในโปรเจ็กต์นี้อ่านอย่างเดียว ไม่แก้แถวที่อ่านมา
+    return SHEET_CACHE[sheetName].slice();
+  }
+
+  const rows = readSheetRows(sheetName);
+  SHEET_CACHE[sheetName] = rows;
+  return rows.slice();
+}
+
+function readSheetRows(sheetName) {
   const sheet = getSheet(sheetName);
   const lastRow = sheet.getLastRow();
   const lastCol = sheet.getLastColumn();
@@ -115,6 +143,7 @@ function insertRow(sheetName, obj) {
 
   const row = headers.map(h => (record[h] === undefined || record[h] === null) ? '' : record[h]);
   sheet.appendRow(row);
+  clearSheetCache(sheetName);
 
   // ตั้งรูปแบบเซลล์เบอร์โทรเป็นข้อความ กันชีตแปลงเป็นตัวเลขแล้วตัดศูนย์หน้า
   const last = sheet.getLastRow();
@@ -157,6 +186,7 @@ function updateRow(sheetName, obj) {
   });
 
   sheet.getRange(rowIndex, 1, 1, headers.length).setValues([merged]);
+  clearSheetCache(sheetName);
   return { success: true, id: obj.id };
 }
 
@@ -173,6 +203,7 @@ function deleteRow(sheetName, id) {
   for (let i = 0; i < ids.length; i++) {
     if (String(ids[i][0]) === String(id)) {
       sheet.deleteRow(i + 2);
+      clearSheetCache(sheetName);
       return { success: true };
     }
   }

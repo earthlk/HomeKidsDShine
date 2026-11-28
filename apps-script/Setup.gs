@@ -316,6 +316,7 @@ function checkFiles() {
     'Settings.gs':   'getSettings',
     'Ledger.gs':     'getLedger',
     'Attendance.gs': 'getAttendanceBoard',
+    'Dashboard.gs':  'getDashboard',
   };
 
   const missing = [];

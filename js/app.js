@@ -342,6 +342,35 @@ const App = {
   },
 
   // ── เปลี่ยนหน้า ───────────────────────────────────────────
+  // ── เปิดหน้าปลายทางให้ตรงแท็บที่สั่งมา ────────────────────
+  // หน้าภาพรวมส่งคนไปที่งานค้างเรื่องหนึ่ง ถ้าไปถึงแล้วเจอแท็บตั้งต้น
+  // คนกดต้องหาแท็บที่ถูกเองอีกรอบ ซึ่งทำให้การกดจากหน้าแรกแทบไม่ช่วยอะไร
+  //
+  // เก็บความรู้ว่าแต่ละหน้าเก็บแท็บไว้ที่ไหนรวมไว้ตรงนี้ที่เดียว
+  // แทนที่จะไปแก้ทุกโมดูลให้รู้จัก App.pending
+  TABS: {
+    attendance: (t) => { Attend.tab   = t; },
+    activity:   (t) => { Activity.tab = t; },
+    income:     (t) => { Income.tab   = t; },   // due | noprice | paid | all
+    payouts:    (t) => { Payouts.tab  = t; },
+    courses:    (t) => {
+      // หน้าคอร์สมีสองแกน แท็บกับตัวกรองสถานะ
+      if (t === 'catalog' || t === 'byTrainer' || t === 'enrollments') Courses.tab = t;
+      else { Courses.tab = 'enrollments'; Courses.state = t; }
+    },
+  },
+
+  pending: null,
+
+  applyPending(pageId) {
+    const p = this.pending;
+    this.pending = null;
+    if (!p || p.page !== pageId || !p.tab) return;
+
+    const apply = this.TABS[pageId];
+    if (apply) { try { apply(p.tab); } catch (e) { /* หน้ายังไม่โหลด ปล่อยใช้ค่าตั้งต้น */ } }
+  },
+
   go(pageId) {
     const role = Store.get('role');
     const item = (NAV[role] || []).find(i => i.id === pageId);
@@ -349,6 +378,7 @@ const App = {
 
     this.current = pageId;
     this.paintTabs(NAV[role] || [], pageId);
+    this.applyPending(pageId);
 
     // อัปเดตสถานะเมนูให้ตรงกับหน้าปัจจุบัน
     document.querySelectorAll('[data-page]').forEach(btn => {
@@ -386,29 +416,8 @@ const App = {
   },
 };
 
-// ── หน้าภาพรวม (Phase 1 เป็นโครงตั้งต้น) ────────────────────
-PAGES.home = async function (el) {
-  const res = await API.call('getDashboard', {});
-
-  if (!res.ok) {
-    el.innerHTML = `<div class="card">
-      <div class="notice notice--error">${UI.esc(res.message)}</div>
-    </div>`;
-    return;
-  }
-
-  const name = Store.get('name') || '';
-  el.innerHTML = `
-    <div class="card">
-      <h2 style="font-family:var(--font-head);font-size:var(--t-lg);font-weight:600">
-        สวัสดี ${UI.esc(name)}
-      </h2>
-      <p style="color:var(--mist);font-size:var(--t-sm);margin-top:var(--sp-2)">
-        ระบบเชื่อมต่อกับฐานข้อมูลเรียบร้อยแล้ว
-        ตัวเลขสรุปจะขึ้นที่นี่เมื่อเปิดใช้งานตารางนัดและคอร์สใน Phase ถัดไป
-      </p>
-    </div>`;
-};
+// ── หน้าภาพรวม ──────────────────────────────────────────────
+PAGES.home = (el) => Home.render(el);
 
 // ============================================================
 // การซิงก์ข้อมูล

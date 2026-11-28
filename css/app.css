@@ -3005,3 +3005,184 @@ button.crow:hover { background: var(--cream); }
 
 /* .warn ต้องชนะสีของ small ในแถว ไม่งั้นข้อความเตือนจะกลายเป็นสีจาง */
 .irow__who small.warn { color: var(--coral); }
+
+/* ============================================================
+   Phase 9 — หน้าภาพรวม
+   ============================================================ */
+
+.hhead { margin-bottom: var(--sp-5); }
+.hhead__hi {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  color: var(--ink);
+}
+.hhead__d {
+  margin: 2px 0 0;
+  font-size: var(--t-sm);
+  color: var(--mist);
+}
+
+.hsec + .hsec { margin-top: var(--sp-6); }
+.hsec__h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.hsec__h span { font-weight: 400; color: var(--mist); }
+
+.hempty {
+  margin: 0;
+  padding: var(--sp-5);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font-size: var(--t-sm);
+  color: var(--mist);
+  text-align: center;
+}
+
+/* ── งานค้าง ────────────────────────────────────────────────
+   เป็นแถวเรียงลงมา ไม่ใช่การ์ดตัวเลขขนาดเท่ากันเรียงข้าง ๆ กัน
+   เพราะการ์ดเท่ากันแปดใบแปลว่าทุกอย่างสำคัญเท่ากัน ซึ่งไม่จริง
+   เรียงจากด่วนไปไม่ด่วน อ่านไล่ลงมาแล้วจบ */
+.jobs { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 760px; }
+
+.job {
+  display: grid;
+  grid-template-columns: 58px 1fr 16px;
+  gap: var(--sp-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font: inherit;
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.job:hover { border-color: var(--clay); }
+
+.job__n {
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  color: var(--ink-soft);
+}
+.job--alert .job__n { color: var(--coral); }
+.job--warn  .job__n { color: var(--honey); }
+
+.job__b { min-width: 0; }
+.job__t { display: block; font-size: var(--t-sm); }
+.job__s { display: block; font-size: var(--t-xs); color: var(--mist); }
+.job__go { color: var(--mist); font-size: var(--t-md); line-height: 1; }
+.job:hover .job__go { color: var(--clay); }
+
+/* ไม่มีงานค้างคือข่าวดี บอกสั้น ๆ แล้วจบ ไม่ต้องฉลอง */
+.hdone {
+  padding: var(--sp-5);
+  background: var(--sage-tint);
+  border-radius: var(--r-md);
+  max-width: 760px;
+}
+.hdone__t {
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 600;
+  color: var(--sage);
+}
+.hdone__d { margin: 4px 0 0; font-size: var(--t-sm); color: var(--ink-soft); }
+
+/* ── ตารางวันนี้ ────────────────────────────────────────────
+   คอลัมน์จริงแบบเดียวกับคิวงานในหน้าบันทึกกิจกรรม
+   หน้าไหนที่เป็นรายการงานควรหน้าตาเหมือนกัน คนจะได้ไม่ต้องเรียนใหม่ทุกหน้า */
+.tday { display: flex; flex-direction: column; gap: var(--sp-2); max-width: 1000px; }
+
+.tday__r {
+  display: grid;
+  grid-template-columns: 62px minmax(160px, 2fr) minmax(110px, 1fr) 118px;
+  gap: var(--sp-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: var(--t-sm);
+  text-align: left;
+  color: var(--ink);
+  cursor: pointer;
+}
+.tday__r:hover { border-color: var(--clay); }
+
+.tday__t b {
+  display: block;
+  font-family: var(--font-head);
+  font-weight: 500;
+}
+.tday__t small { display: block; font-size: var(--t-xs); color: var(--mist); }
+
+.tday__m { min-width: 0; }
+.tday__c { display: block; font-weight: 500; }
+.tday__m small { display: block; font-size: var(--t-xs); color: var(--ink-soft); }
+
+.tday__w { min-width: 0; font-size: var(--t-xs); color: var(--ink-soft); }
+.tday__w small { display: block; color: var(--mist); }
+
+.tday__a { justify-self: end; }
+
+@media (max-width: 860px) {
+  .tday__r {
+    grid-template-columns: 56px 1fr auto;
+    row-gap: 6px;
+  }
+  .tday__t { grid-column: 1; grid-row: 1; }
+  .tday__m { grid-column: 2 / 4; grid-row: 1; }
+  .tday__w { grid-column: 1 / 3; grid-row: 2; }
+  .tday__a { grid-column: 3; grid-row: 2; }
+
+  .job { grid-template-columns: 46px 1fr 14px; }
+  .job__n { font-size: var(--t-base); }
+}
+
+/* หัวข้อคั่นกองในรายการเช็กชื่อ
+   เป็นหัวข้อ ไม่ใช่แท็บ เพราะทั้งสองกองต้องเคลียร์เหมือนกัน
+   แค่คนละความเร่งด่วน ไม่ใช่คนละงาน */
+.isec {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: var(--sp-5) 0 var(--sp-2);
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.isec:first-child { margin-top: 0; }
+.isec small { font-weight: 400; color: var(--mist); }
+
+/* รายการนัดถัดไปของผู้ปกครองมีสามคอลัมน์ ไม่ใช่สี่
+   และคอลัมน์วันต้องกว้างพอให้ "28 พ.ย. 69" อยู่บรรทัดเดียว
+   วันที่ที่ตกบรรทัดกลางคำอ่านผิดได้ง่ายกว่าที่คิด */
+.tday--next { grid-template-columns: none; }
+.tday--next .tday__r { grid-template-columns: 104px minmax(160px, 1fr) auto; }
+.tday--next .tday__t b { white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .tday--next .tday__r { grid-template-columns: 1fr auto; }
+  .tday--next .tday__t { grid-column: 1; grid-row: 1; }
+  .tday--next .tday__m { grid-column: 1; grid-row: 2; }
+  .tday--next .tday__a { grid-column: 2; grid-row: 1; }
+}

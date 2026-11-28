@@ -65,10 +65,15 @@ const Attend = {
 
     box.innerHTML = `
       <div class="lstrip">
+        <div class="lstrip__i">
+          <span class="lstrip__k">วันนี้</span>
+          <span class="lstrip__v">${(b.todayRows || []).length}</span>
+          <span class="lstrip__n">คาบที่ยังไม่ได้เช็ก</span>
+        </div>
         <div class="lstrip__i${b.unchecked.length ? ' lstrip__i--alert' : ''}">
-          <span class="lstrip__k">ค้างเช็กชื่อ</span>
+          <span class="lstrip__k">ค้างมาจากวันก่อน</span>
           <span class="lstrip__v">${b.unchecked.length}</span>
-          <span class="lstrip__n">คาบที่ผ่านวันไปแล้ว</span>
+          <span class="lstrip__n">ผ่านวันไปแล้วยังไม่เช็ก</span>
         </div>
         <div class="lstrip__i">
           <span class="lstrip__k">รอตัดสิน</span>
@@ -120,6 +125,11 @@ const Attend = {
   // ประวัติของผู้ฝึกสอน = รอตัดสิน + ตัดสินแล้ว เรียงวันใหม่ขึ้นก่อน
   listOf(tab) {
     if (!this.board) return [];
+    // แท็บค้างเช็กรวมของวันนี้กับของที่ค้างมาก่อนหน้าไว้ด้วยกัน
+    // แต่ตอนแสดงผลจะคั่นหัวข้อให้เห็นว่าอันไหนเป็นอันไหน
+    if (tab === 'unchecked') {
+      return (this.board.todayRows || []).concat(this.board.unchecked || []);
+    }
     if (tab !== 'history') return this.board[tab] || [];
     return (this.board.pending || []).concat(this.board.decided || [])
       .slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
@@ -134,8 +144,9 @@ const Attend = {
   },
 
   find(id) {
-    const all = (this.board.unchecked || [])
-      .concat(this.board.pending || [], this.board.decided || []);
+    const all = (this.board.todayRows || [])
+      .concat(this.board.unchecked || [], this.board.pending || [],
+              this.board.decided || []);
     return all.find(r => String(r.id) === String(id));
   },
 
@@ -147,8 +158,22 @@ const Attend = {
     const list = this.rows();
     if (!list.length) { box.innerHTML = this.emptyFor(this.tab); return; }
 
-    box.innerHTML = '<div class="irows">' +
-      list.map(r => this.row(r)).join('') + '</div>';
+    if (this.tab === 'unchecked') {
+      // ของวันนี้ขึ้นก่อนเสมอ เพราะเป็นใบรายชื่อที่กำลังจะใช้
+      // ของที่ค้างมาจากวันก่อนอยู่ล่าง เป็นของที่ต้องตามเก็บ
+      const today = list.filter(r => String(r.date) === String(this.board.today));
+      const old   = list.filter(r => String(r.date) !== String(this.board.today));
+      const group = (title, note, rows) => rows.length ? `
+        <h3 class="isec">${UI.esc(title)}<small>${UI.esc(note)}</small></h3>
+        <div class="irows">${rows.map(r => this.row(r)).join('')}</div>` : '';
+
+      box.innerHTML =
+        group('วันนี้', today.length + ' คาบ', today) +
+        group('ค้างมาจากวันก่อน', old.length + ' คาบ', old);
+    } else {
+      box.innerHTML = '<div class="irows">' +
+        list.map(r => this.row(r)).join('') + '</div>';
+    }
 
     box.querySelectorAll('[data-mark]').forEach(btn => {
       btn.onclick = () => Attend.mark(btn.dataset.id, btn.dataset.mark, btn);
@@ -163,8 +188,8 @@ const Attend = {
 
   emptyFor(tab) {
     if (tab === 'unchecked') {
-      return UI.empty('เช็กชื่อครบแล้ว',
-        'ทุกคาบที่ผ่านวันไปแล้วมีการเช็กชื่อเรียบร้อย');
+      return UI.empty('ไม่มีคาบที่ต้องเช็ก',
+        'วันนี้ไม่มีคาบสอน และคาบที่ผ่านมาเช็กชื่อครบหมดแล้ว');
     }
     if (tab === 'pending') {
       return UI.empty('ไม่มีคาบรอตัดสิน',

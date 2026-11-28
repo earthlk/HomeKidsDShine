@@ -71,7 +71,7 @@ const Income = {
 
       <div class="ftools">
         <div class="chipbar chipbar--tabs">
-          ${[['due', 'ค้างชำระ'], ['paid', 'ครบแล้ว'], ['all', 'ทั้งหมด']]
+          ${this.tabList()
             .map(([v, label]) => `<button class="chipbtn${this.tab === v ? ' is-on' : ''}"
               data-itab="${v}">${label}
               <span class="chipbtn__n">${this.rowsOf(v).length}</span></button>`).join('')}
@@ -110,9 +110,18 @@ const Income = {
   // รายการที่ยังไม่ได้ตั้งราคาถือว่ายังไม่จบ จึงอยู่ในค้างชำระ ไม่ใช่ครบแล้ว
   rowsOf(tab) {
     const rows = (this.board && this.board.rows) || [];
-    if (tab === 'due')  return rows.filter(r => r.status !== 'paid');
-    if (tab === 'paid') return rows.filter(r => r.status === 'paid');
+    if (tab === 'due')     return rows.filter(r => r.status !== 'paid');
+    if (tab === 'paid')    return rows.filter(r => r.status === 'paid');
+    if (tab === 'noprice') return rows.filter(r => r.status === 'noprice');
     return rows;
+  },
+
+  // แท็บยังไม่ตั้งราคาโผล่เฉพาะตอนที่มีจริง เพราะเป็นของค้างที่ต้องเคลียร์
+  // ไม่ใช่มุมมองถาวรที่ต้องอ่านทิ้งทุกครั้งที่เปิดหน้า
+  tabList() {
+    const base = [['due', 'ค้างชำระ'], ['paid', 'ครบแล้ว'], ['all', 'ทั้งหมด']];
+    if (this.rowsOf('noprice').length) base.splice(1, 0, ['noprice', 'ยังไม่ตั้งราคา']);
+    return base;
   },
 
   find(id) {

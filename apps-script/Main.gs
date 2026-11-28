@@ -48,6 +48,11 @@ function json(obj) {
 
 // ── เส้นทางหลัก ─────────────────────────────────────────────
 function route(body) {
+  // Apps Script สร้าง context ใหม่ทุกคำขออยู่แล้ว แคชจึงว่างเองตั้งแต่ต้น
+  // แต่ล้างตรงนี้ด้วย เพราะ harness ที่ใช้ทดสอบรันหลายคำขอใน context เดียว
+  // ถ้าไม่ล้าง การทดสอบจะเห็นข้อมูลเก่าแล้วบอกว่าผ่านทั้งที่ของจริงจะพัง
+  clearSheetCache();
+
   const action  = body.action;
   const payload = body.payload || {};
 
@@ -176,11 +181,4 @@ function logout_(sess) {
 
 // ── Dashboard (Phase 1 ยังเป็นโครงเปล่า) ────────────────────
 // Phase ถัดไปจะเติมตัวเลขจริงเมื่อมีข้อมูลนัดหมายและคอร์สแล้ว
-function getDashboard(sess) {
-  return {
-    role:  sess.role,
-    name:  sess.name,
-    today: todayTH(),
-    cards: [],
-  };
-}
+// getDashboard ย้ายไปอยู่ Dashboard.gs แล้ว
