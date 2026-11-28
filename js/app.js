@@ -14,10 +14,15 @@ const NAV = {
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางนัด',      icon: 'calendar' },
     { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note',   short: 'บันทึก' },
+    { id: 'attendance', label: 'เช็กชื่อ',    icon: 'check' },
     { id: 'people',   label: 'เด็กและผู้ปกครอง', icon: 'people', short: 'เด็ก' },
     { id: 'trainers', label: 'ผู้ฝึกสอน',      icon: 'whistle' },
     { id: 'courses',  label: 'คอร์ส',          icon: 'book' },
-    { id: 'finance',  label: 'การเงิน',        icon: 'wallet' },
+    // การเงินแยกสามหน้า เพราะเป็นงานต่างชนิดกัน
+    // รับเงินกับจ่ายค่าสอนเป็นงานที่ทำทุกวัน สรุปการเงินเปิดดูตอนปิดเดือน
+    { id: 'income',   label: 'รับเงิน',        icon: 'wallet' },
+    { id: 'payouts',  label: 'จ่ายค่าสอน',     icon: 'payout' },
+    { id: 'ledger',   label: 'สรุปการเงิน',    icon: 'ledger' },
     { id: 'receipt',  label: 'ใบเสร็จ',        icon: 'receipt' },
     { id: 'users',    label: 'ผู้ใช้งาน',      icon: 'gear' },
     { id: 'privacy',  label: 'ข้อมูลส่วนบุคคล', icon: 'shield' },
@@ -26,8 +31,9 @@ const NAV = {
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
     { id: 'calendar', label: 'ตารางสอน',      icon: 'calendar' },
     { id: 'activity', label: 'บันทึกกิจกรรม', icon: 'note', short: 'บันทึก' },
+    { id: 'attendance', label: 'เช็กชื่อ',    icon: 'check' },
     { id: 'courses',  label: 'คอร์ส',          icon: 'book' },
-    { id: 'finance',  label: 'ค่าสอน',        icon: 'wallet' },
+    { id: 'payouts',  label: 'ค่าสอนของฉัน',  icon: 'wallet', short: 'ค่าสอน' },
   ],
   parent: [
     { id: 'home',     label: 'ภาพรวม',        icon: 'home' },
@@ -36,7 +42,7 @@ const NAV = {
     { id: 'activity', label: 'บันทึกการเรียน', icon: 'note', short: 'บันทึก' },
     { id: 'people',   label: 'ข้อมูลบุตรหลาน', icon: 'people', short: 'บุตรหลาน' },
     // ผู้ปกครองดูยอดค้างและประวัติการจ่ายของตัวเองได้ แต่แก้ไขอะไรไม่ได้
-    { id: 'finance',  label: 'ค่าเรียน',       icon: 'wallet' },
+    { id: 'income',   label: 'ค่าเรียน',       icon: 'wallet' },
   ],
 };
 
@@ -93,16 +99,7 @@ const App = {
 
     // แท็บล่างของมือถือใส่ได้สี่ช่อง ถ้าเมนูมีเกินสี่ ช่องสุดท้ายต้องเป็น "เพิ่มเติม"
     // ไม่งั้นหน้าที่ห้าขึ้นไปจะเข้าไม่ได้เลยบนมือถือ เพราะไม่มีแถบข้างให้กด
-    const extra = items.length > 4;
-    const shown = extra ? items.slice(0, 3) : items;
-
-    const tabs = shown.map(item => `
-      <button class="tabbar__item" data-page="${item.id}">
-        ${ICON[item.icon]}<span>${item.short || item.label}</span>
-      </button>`).join('') + (extra ? `
-      <button class="tabbar__item" id="moreTab">
-        ${ICON.menu}<span>เพิ่มเติม</span>
-      </button>` : '');
+    const tabs = this.tabsHtml(items, null);
 
     document.getElementById('root').innerHTML = `
       <div class="shell">
@@ -156,6 +153,39 @@ const App = {
 
     document.getElementById('syncBtn').onclick     = () => Sync.now();
     Sync.start();
+
+    this.refreshAlerts();
+  },
+
+  // ── ป้ายแจ้งเตือนบนเมนู ───────────────────────────────────
+  // ของค้างต้องเห็นโดยไม่ต้องเปิดหน้าไปดู ไม่งั้นคาบที่เด็กขาดจะค้างอยู่เป็นเดือน
+  // เรียกตอนเข้าระบบและหลังเช็กชื่อหรือตัดสินทุกครั้ง
+  // ผู้ปกครองไม่มีหน้านี้ เรียกไปก็โดนปฏิเสธ จึงข้ามไปเลย
+  async refreshAlerts() {
+    if (Store.get('role') === 'parent') return;
+
+    const res = await API.call('getAlerts');
+    if (!res.ok) return;          // ป้ายเป็นของเสริม พลาดแล้วไม่ต้องรบกวนใคร
+
+    this.alerts = Number(res.data.pending || 0) + Number(res.data.unchecked || 0);
+    this.badge('attendance', this.alerts);
+  },
+
+  alerts: 0,
+
+  badge(pageId, n) {
+    document.querySelectorAll('[data-page="' + pageId + '"]').forEach(btn => {
+      let dot = btn.querySelector('.navlink__n');
+
+      if (!n) { if (dot) dot.remove(); return; }
+
+      if (!dot) {
+        dot = document.createElement('span');
+        dot.className = 'navlink__n';
+        btn.appendChild(dot);
+      }
+      dot.textContent = n > 99 ? '99+' : String(n);
+    });
   },
 
   // ── ล้างข้อมูลที่เก็บไว้ทั้งหมด ────────────────────────────
@@ -272,6 +302,45 @@ const App = {
     People.bindSheet({ close: () => UI.closeSheet() });
   },
 
+  // ── แท็บล่างบนมือถือ ──────────────────────────────────────
+  // มีที่แค่สี่ช่อง เมนูยาวกว่านั้นช่องสุดท้ายเป็นปุ่มเพิ่มเติม
+  // ถ้าหน้าที่เปิดอยู่ไม่ได้อยู่ในสามช่องแรก ให้ยกมาแทนช่องที่สาม
+  // ไม่งั้นคนที่อยู่หน้าจ่ายค่าสอนจะมองไม่เห็นว่าตัวเองอยู่ไหน
+  tabsHtml(items, currentId) {
+    const extra = items.length > 4;
+    let shown = extra ? items.slice(0, 3) : items;
+
+    if (extra && currentId && !shown.some(i => i.id === currentId)) {
+      const cur = items.find(i => i.id === currentId);
+      if (cur) shown = shown.slice(0, 2).concat([cur]);
+    }
+
+    return shown.map(item => `
+      <button class="tabbar__item" data-page="${item.id}">
+        ${ICON[item.icon]}<span>${item.short || item.label}</span>
+      </button>`).join('') + (extra ? `
+      <button class="tabbar__item" id="moreTab">
+        ${ICON.menu}<span>เพิ่มเติม</span>
+      </button>` : '');
+  },
+
+  // วาดแท็บล่างใหม่แล้วผูกเหตุการณ์ให้ปุ่มที่เพิ่งเกิด
+  paintTabs(items, currentId) {
+    const bar = document.querySelector('.tabbar');
+    if (!bar) return;
+
+    bar.innerHTML = this.tabsHtml(items, currentId);
+    bar.querySelectorAll('[data-page]').forEach(btn => {
+      btn.onclick = () => App.go(btn.dataset.page);
+    });
+    const more = document.getElementById('moreTab');
+    if (more) more.onclick = () => App.openMenu(items);
+
+    // แท็บถูกวาดใหม่ ป้ายที่เคยติดไว้หายไปด้วย ติดกลับจากตัวเลขที่จำไว้
+    // ไม่เรียกหลังบ้านซ้ำ เพราะเปลี่ยนหน้าทีก็จะยิงทีหนึ่งโดยไม่จำเป็น
+    if (this.alerts) this.badge('attendance', this.alerts);
+  },
+
   // ── เปลี่ยนหน้า ───────────────────────────────────────────
   go(pageId) {
     const role = Store.get('role');
@@ -279,6 +348,7 @@ const App = {
     if (!item) return;
 
     this.current = pageId;
+    this.paintTabs(NAV[role] || [], pageId);
 
     // อัปเดตสถานะเมนูให้ตรงกับหน้าปัจจุบัน
     document.querySelectorAll('[data-page]').forEach(btn => {

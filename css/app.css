@@ -1322,6 +1322,8 @@ textarea.field__input { resize: vertical; min-height: 62px; }
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  /* การ์ดมีได้ถึงสองปุ่ม ถ้าไม่ยอมให้ตกบรรทัด วันที่จะถูกบีบจนขึ้นบรรทัดกลางคำ */
+  flex-wrap: wrap;
 }
 .ecard__bottom .ecard__foot { flex: 1; min-width: 0; }
 
@@ -2068,3 +2070,938 @@ button.rail__user:hover .rail__more { color: var(--clay); }
   .whosel { justify-content: space-between; }
   .whosel .field__input { flex: 1; min-width: 0; }
 }
+
+/* ── รายการที่ยังไม่ได้ตั้งราคา ────────────────────────────── */
+/* ต้องสะดุดตา เพราะเป็นเงินที่ควรเก็บแต่ยังเก็บไม่ได้
+   ใช้สีส้มแดงจากรถของเล่น ไม่ใช่สีเทาแบบรายการที่จบไปแล้ว */
+.pchip--alert { background: var(--coral-tint); color: var(--coral); }
+.stat--alert { border-color: var(--coral); background: var(--coral-tint); }
+.stat--alert .stat__num { color: var(--coral); }
+.erow__none {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  color: var(--mist);
+}
+
+/* ── QR พร้อมเพย์ ──────────────────────────────────────────── */
+.qrbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+}
+/* ขนาดคงที่ ไม่ยืดตามจอ เพราะ QR เล็กเกินกล้องจับยาก ใหญ่เกินก็ต้องถอยห่าง */
+.qrbox__img {
+  width: 232px;
+  max-width: 100%;
+  line-height: 0;
+}
+.qrbox__img svg { width: 100%; height: auto; display: block; }
+.qrbox__amt {
+  font-family: var(--font-head);
+  font-size: var(--t-xl);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--clay-dark);
+}
+.qrbox__amt span { font-size: var(--t-base); font-weight: 400; color: var(--ink-soft); }
+.qrbox__to {
+  margin: 0;
+  font-size: var(--t-sm);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Phase 6.6 — การเงินสามหน้า
+   เพิ่มต่อท้ายตามกฎของโปรเจ็กต์ ไม่แก้ของเดิม
+
+   เปลี่ยนจากการ์ดใบ ๆ เรียงกันมาเป็นแถวในกรอบเดียวคั่นด้วยเส้นผม
+   เพราะงานของหน้าการเงินคือกวาดตาหายอดที่ต้องจัดการ
+   การ์ดที่มีช่องว่างรอบตัวทำให้เห็นทีละห้ารายการ แถวแบบนี้เห็นสิบกว่ารายการ
+   ════════════════════════════════════════════════════════════ */
+
+/* ── พื้นผิวที่เบราว์เซอร์วาดให้เอง ─────────────────────────── */
+/* ของพวกนี้มาพร้อมค่าตั้งต้นของเบราว์เซอร์ซึ่งไม่ได้เป็นสีของใคร
+   ดึงเข้ามาใช้สีแบรนด์ด้วย ไม่งั้นพอลากเลือกตัวเลขจะเจอน้ำเงินของระบบ */
+::selection { background: var(--clay-tint); color: var(--ink); }
+input, textarea, select { caret-color: var(--clay); }
+
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background-clip: content-box; background-color: var(--mist); }
+
+/* ── แถบยอดรวมบนสุด ────────────────────────────────────────── */
+/* กรอบเดียวแบ่งช่องด้วยเส้น ไม่ใช่การ์ดสามใบ
+   เพราะสามตัวเลขนี้อ่านเทียบกันเสมอ ไม่ได้อ่านแยกใบ */
+.lstrip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-4);
+}
+.lstrip__i {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--sp-3) var(--sp-4);
+  border-left: 1px solid var(--line-soft);
+  min-width: 0;
+}
+.lstrip__i:first-child { border-left: none; }
+.lstrip__i--alert { background: var(--coral-tint); }
+.lstrip__i--net { background: var(--line-soft); }
+.lstrip__k {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lstrip__v {
+  font-family: var(--font-head);
+  font-size: var(--t-md);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.lstrip__v--warn { color: var(--honey); }
+.lstrip__v--in   { color: var(--sage); }
+.lstrip__v--out  { color: var(--coral); }
+.lstrip__n {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── แถบเครื่องมือเหนือรายการ ──────────────────────────────── */
+.ftools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-3);
+}
+.ftools--tight { margin-top: var(--sp-5); }
+/* ไม่ใส่ flex-wrap ตรงนี้ เพราะกล่อง flex ที่ตัดบรรทัดได้จะคิดความกว้างสูงสุดของตัวเอง
+   จากลูกที่กว้างที่สุด ไม่ใช่ผลรวม แล้วมันจะหดจนปุ่มตกบรรทัดทั้งที่ยังมีที่เหลือ
+   ให้ .ftools ข้างนอกเป็นคนตัดบรรทัดแทน */
+.ftools__right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.ftools__q {
+  width: auto;
+  flex: 0 1 240px;
+  padding: 7px 10px;
+  font-size: var(--t-sm);
+}
+
+/* ── กรอบรายการ ────────────────────────────────────────────── */
+.irows {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+/* ── แถวรับเงิน ────────────────────────────────────────────── */
+.irow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-right: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+}
+.irow:first-child { border-top: none; }
+.irow:hover { background: var(--cream); }
+.irow--alert { background: var(--coral-tint); }
+.irow--alert:hover { background: var(--coral-tint); }
+/* เส้นคั่นสีอ่อนจมหายไปบนพื้นสีชมพู ใช้สีหมึกจาง ๆ แทน
+   ไม่ใช้สีแดงเพราะเส้นแดงคาดกลางอ่านเหมือนการแจ้งเตือนอีกชั้น */
+.irow--alert + .irow--alert { border-top-color: rgba(61, 47, 34, 0.12); }
+
+.irow__open {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 0;
+  padding: var(--sp-3) var(--sp-2) var(--sp-3) var(--sp-4);
+  background: none;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.irow__who {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink);
+}
+.irow__who small,
+.irow__num small {
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ตัวเลขชิดขวาและใช้ตัวเลขความกว้างเท่ากัน
+   เพื่อให้หลักพันของทุกแถวตรงกันตอนกวาดตาลงมา */
+.irow__num {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.irow__num b {
+  font-family: var(--font-head);
+  font-size: var(--t-base);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.irow__num--due b { color: var(--coral); }
+.irow__dash { color: var(--mist); }
+
+/* ไม่มีแถบสัดส่วนในแถวแล้ว ตัวเลขกับบรรทัด "ค้าง จาก 6,000" บอกครบกว่า
+   แถบกว้างหกสิบพิกเซลเทียบสัดส่วนด้วยตาไม่ได้อยู่ดี มันเลยเป็นแค่ขีดสีเขียว
+   แถบสัดส่วนยังอยู่ในกล่องรายละเอียด ซึ่งมีที่ให้มันยาวพอจะอ่านได้จริง */
+
+/* ปุ่มงานหลักอยู่บนแถวเลย ไม่ต้องเปิดกล่องก่อน
+   เพราะ "รับเงินมาแล้ว บันทึกหน่อย" เป็นงานที่ทำบ่อยที่สุดของหน้านี้ */
+.irow__act {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--clay);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.irow__act:hover { background: var(--clay-tint); border-color: var(--clay); }
+.irow__act:active { background: var(--clay-tint); }
+/* ที่ว่างแทนปุ่มในแถวที่ไม่มีอะไรให้ทำ กันคอลัมน์ตัวเลขเลื่อนไปมาระหว่างแถว */
+.irow__act--off {
+  display: block;
+  width: 61px;
+  height: 1px;
+  background: none;
+  border: none;
+  cursor: default;
+}
+
+/* ── แถวคาบและแถวรายการ ────────────────────────────────────── */
+.crow {
+  display: grid;
+  grid-template-columns: 62px 1fr auto;
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: none;
+  border: none;
+  border-top: 1px solid var(--line-soft);
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.crow:first-child { border-top: none; }
+.crow--pick,
+button.crow { cursor: pointer; }
+.crow--pick:hover,
+button.crow:hover { background: var(--cream); }
+.crow--pick { grid-template-columns: 20px 62px 1fr auto; }
+.crow--pick.is-picked { background: var(--clay-tint); }
+.crow--flat { cursor: default; }
+
+/* ช่องติ๊กวาดเอง เพราะ input จริงจะดูดคลิกไปจากตัวแถวทั้งแถว */
+.crow__box {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  background: var(--card);
+  position: relative;
+}
+.crow__box.is-on { background: var(--clay); border-color: var(--clay); }
+.crow__box.is-on::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--card);
+  border-bottom: 2px solid var(--card);
+  transform: rotate(-45deg);
+}
+
+.crow__when,
+.crow__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.crow__when b {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.crow__main b {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crow__when small,
+.crow__main small {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crow__fee {
+  flex-shrink: 0;
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.crow__fee--in  { color: var(--sage); }
+.crow__fee--out { color: var(--coral); }
+
+/* ── แถบยอดในกล่อง ─────────────────────────────────────────── */
+/* แทนก้อนตัวเลขใหญ่กลางกล่อง ประหยัดความสูงไปราวครึ่ง
+   เพราะกล่องที่เลื่อนไม่จบคือเหตุผลหลักที่คนบอกว่าใช้งานยาก */
+.duebar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-1) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-4);
+  background: var(--line-soft);
+  border-radius: var(--r-md);
+  position: relative;
+  overflow: hidden;
+}
+.duebar--due { background: var(--coral-tint); }
+.duebar__k {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.duebar__v {
+  font-family: var(--font-head);
+  font-size: var(--t-lg);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.duebar--due .duebar__v { color: var(--coral); }
+.duebar__u {
+  font-size: var(--t-xs);
+  color: var(--mist);
+  margin-left: auto;
+  text-align: right;
+}
+.duebar__g {
+  display: block;
+  flex: 1 0 100%;
+  height: 3px;
+  margin-top: var(--sp-1);
+  border-radius: 99px;
+  background: rgba(61, 47, 34, 0.12);
+  overflow: hidden;
+}
+.duebar__g i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--sage);
+}
+
+/* ── ส่วนที่พับเก็บไว้ในกล่อง ───────────────────────────────── */
+/* รายการที่ตรวจมาแล้วไม่ต้องกางไว้ให้เลื่อนผ่าน แต่ยังเปิดดูได้ */
+.fold {
+  border-top: 1px solid var(--line-soft);
+  padding: var(--sp-2) 0;
+}
+.fold__sum {
+  font-size: var(--t-sm);
+  font-weight: 500;
+  color: var(--clay);
+  cursor: pointer;
+  padding: var(--sp-1) 0;
+  list-style: none;
+}
+.fold__sum::-webkit-details-marker { display: none; }
+.fold__sum::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--sp-2);
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(-45deg) translateY(-1px);
+  transition: transform 160ms ease;
+}
+.fold[open] > .fold__sum::before { transform: rotate(45deg) translateY(-2px); }
+.fold__sum:hover { color: var(--clay-dark); }
+
+/* ── ตารางสรุปรายเดือน ─────────────────────────────────────── */
+/* ตารางจริง เพราะงานของหน้าสรุปคือเทียบเดือนต่อเดือน
+   ตัวเลขต้องอยู่คอลัมน์เดียวกันและชิดขวาถึงจะกวาดตาเทียบได้ */
+.ltable {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  margin-bottom: var(--sp-5);
+}
+.ltable__t {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-sm);
+}
+.ltable__cap {
+  caption-side: top;
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4) var(--sp-2);
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+.ltable__t th,
+.ltable__t td {
+  padding: var(--sp-2) var(--sp-4);
+  text-align: left;
+  border-top: 1px solid var(--line-soft);
+}
+.ltable__t thead th {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
+  background: var(--cream);
+}
+.ltable__t tbody th {
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ltable__t .num {
+  text-align: right;
+  font-family: var(--font-head);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.ltable__t tbody tr:hover { background: var(--cream); }
+.ltable__t tbody tr.is-zero th,
+.ltable__t tbody tr.is-zero .num { color: var(--mist); }
+.ltable__t .num.is-neg { color: var(--coral); }
+.ltable__t tfoot th,
+.ltable__t tfoot td {
+  border-top: 1.5px solid var(--line);
+  background: var(--cream);
+  font-weight: 600;
+  color: var(--ink);
+}
+.ltable__t tfoot .num { color: var(--ink); }
+
+.fhint--foot {
+  margin-top: var(--sp-5);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--line-soft);
+  max-width: 68ch;
+  line-height: 1.6;
+}
+
+/* ── จอแคบ ─────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  /* ยอดรวมเรียงลงมาแทนการบีบสามช่องให้แคบจนตัวเลขขึ้นบรรทัดใหม่ */
+  .lstrip {
+    grid-auto-flow: row;
+    grid-auto-columns: auto;
+  }
+  .lstrip__i {
+    border-left: none;
+    border-top: 1px solid var(--line-soft);
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+  }
+  .lstrip__i:first-child { border-top: none; }
+  .lstrip__k { flex: 1 1 auto; }
+  .lstrip__v { font-size: var(--t-base); }
+  .lstrip__n { flex: 0 0 auto; max-width: 42%; }
+
+  .ftools__right { flex: 1 1 100%; flex-wrap: wrap; }
+  /* ช่องค้นหายืดหดได้ ปุ่มจะได้นั่งข้าง ๆ ไม่ตกลงไปกินอีกบรรทัด */
+  .ftools__q { flex: 1 1 160px; }
+  .whosel { flex: 1 1 100%; }
+  .whosel .field__input { min-width: 0; flex: 1 1 auto; }
+
+  /* กล่องรับเงินบนจอสูง 844px ล้นไปยี่สิบพิกเซล บีบแถบยอดกับระยะห่างให้พอดี */
+  .duebar {
+    padding: var(--sp-2) var(--sp-3);
+    margin-bottom: var(--sp-3);
+  }
+  .duebar__v { font-size: var(--t-md); }
+
+  .irow__open { padding-left: var(--sp-3); gap: var(--sp-2); }
+  .irow__act { padding: 6px 10px; }
+  .irow__act--off { width: 53px; }
+
+  /* วันที่ยังต้องอยู่ แค่บีบคอลัมน์ให้แคบลง
+     ซ่อนไปแล้วจะอ่านรายการย้อนหลังไม่ได้เลย */
+  .crow { padding: var(--sp-3); gap: var(--sp-2); grid-template-columns: 52px 1fr auto; }
+  .crow--pick { grid-template-columns: 20px 52px 1fr auto; }
+
+  .ltable__t th,
+  .ltable__t td { padding: var(--sp-2) var(--sp-3); }
+  .duebar__u { margin-left: 0; text-align: left; flex: 1 1 100%; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   Phase 7 — เช็กชื่อและคาบชดเชย
+   ════════════════════════════════════════════════════════════ */
+
+/* ── ป้ายตัวเลขบนเมนู ───────────────────────────────────────── */
+/* ของค้างต้องเห็นโดยไม่ต้องเปิดหน้าไปดู */
+.navlink__n {
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--coral);
+  color: #FFFFFF;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* บนแท็บล่างไม่มีที่ให้วางข้างชื่อ เกาะมุมบนขวาของช่องแทน
+   เขียนเป็น .tabbar > .tabbar__item เพื่อไม่ให้เป็นตัวเลือกซ้ำกับของเดิม
+   ซึ่งตัวตรวจของโปรเจ็กต์จะทักว่าประกาศซ้ำ */
+.tabbar > .tabbar__item { position: relative; }
+.tabbar__item .navlink__n {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  margin-left: 6px;
+}
+
+/* ── แถวแบบไม่กดได้ ─────────────────────────────────────────── */
+/* หน้านี้ตัวแถวไม่ใช่ปุ่ม เพราะปุ่มจริงอยู่ทางขวาและมีหลายปุ่ม */
+.irow__open--flat { cursor: default; }
+.irow__when { font-family: var(--font-body); font-size: var(--t-sm); }
+
+.irow__tag {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 99px;
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-size: var(--t-xs);
+  white-space: nowrap;
+}
+.irow__done {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+/* ปุ่มที่พาไปทำงานต่อ ย้ำด้วยสีแบรนด์เพราะเป็นงานหลักของแท็บนั้น */
+.irow__act--go {
+  background: var(--clay);
+  border-color: var(--clay);
+  color: #FFFFFF;
+}
+.irow__act--go:hover { background: var(--clay-dark); border-color: var(--clay-dark); }
+
+/* ── ปุ่มเช็กชื่อสามปุ่มบนแถว ───────────────────────────────── */
+/* กดครั้งเดียวจบ ไม่เปิดกล่อง ไม่ถามยืนยัน เพราะทำวันละหลายสิบครั้ง */
+.markset {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.markset.is-busy { opacity: 0.5; pointer-events: none; }
+
+.markbtn {
+  padding: 6px 11px;
+  font-family: var(--font-body);
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.markbtn:hover { border-color: var(--mist); }
+.markbtn--present:hover { background: var(--sage-tint);  border-color: var(--sage);  color: var(--sage); }
+.markbtn--late:hover    { background: var(--honey-tint); border-color: var(--honey); color: var(--honey); }
+.markbtn--absent:hover  { background: var(--coral-tint); border-color: var(--coral); color: var(--coral); }
+
+/* ── ตัวเลือกในกล่องตัดสิน ──────────────────────────────────── */
+/* สามทางที่ให้ผลต่างกัน ต้องอ่านผลก่อนเลือก ไม่ใช่เดาจากชื่อปุ่ม */
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+.pick {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.pick:hover { border-color: var(--mist); }
+.pick input { margin-top: 3px; accent-color: var(--clay); flex-shrink: 0; }
+.pick:has(input:checked) { border-color: var(--clay); background: var(--clay-tint); }
+.pick__b {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pick__t { font-size: var(--t-sm); font-weight: 500; color: var(--ink); }
+.pick__d { font-size: var(--t-xs); color: var(--ink-soft); line-height: 1.5; }
+
+@media (max-width: 720px) {
+  /* ปุ่มเช็กชื่อสามปุ่มกับชื่อเด็กอยู่บรรทัดเดียวกันไม่พอ ให้ลงมาเต็มความกว้าง */
+  .irow:has(.markset) { grid-template-columns: 1fr; padding: 0 0 var(--sp-3); }
+  .irow:has(.markset) .irow__open { padding-bottom: var(--sp-2); }
+  .markset { padding: 0 var(--sp-3); }
+  .markbtn { flex: 1 1 0; }
+}
+
+/* ============================================================
+   Phase 8 — เช็กชื่อในฟอร์มบันทึกกิจกรรม
+   ============================================================ */
+
+/* สถานะเลือกแล้วของปุ่มเช็กชื่อ ใช้ในฟอร์มบันทึกกิจกรรม
+   ที่หน้าเช็กชื่อปุ่มเป็นคำสั่งกดครั้งเดียวจบ จึงไม่มีสถานะนี้
+   แต่ในฟอร์มมันคือค่าที่ยังแก้ได้จนกว่าจะกดบันทึก ต้องเห็นว่าเลือกอะไรอยู่ */
+.markbtn.is-on { font-weight: 600; }
+.markbtn--present.is-on { background: var(--sage-tint);  border-color: var(--sage);  color: var(--sage); }
+.markbtn--late.is-on    { background: var(--honey-tint); border-color: var(--honey); color: var(--honey); }
+.markbtn--absent.is-on  { background: var(--coral-tint); border-color: var(--coral); color: var(--coral); }
+
+.markset--sm .markbtn { padding: 4px 10px; }
+
+.kidblock__att {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.kidblock__attk {
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+/* ============================================================
+   Phase 8 — หน้าเด็กและผู้ปกครอง
+   ============================================================ */
+
+/* ── หัวข้อกลุ่มตามช่วงอายุ ─────────────────────────────────── */
+/* เป็นหัวข้อ ไม่ใช่การ์ด จึงไม่มีกรอบและไม่มีพื้นหลัง
+   เส้นคั่นบาง ๆ พอให้ตาหยุดได้โดยไม่แย่งความสนใจจากการ์ดข้างล่าง */
+.pgroup + .pgroup { margin-top: var(--sp-6); }
+.pgroup__h {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--font-head);
+  font-size: var(--t-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.pgroup__n { font-weight: 400; color: var(--mist); }
+
+.chipbar--bands { margin-bottom: var(--sp-4); }
+
+/* ── แถบคอร์สบนการ์ดเด็ก ───────────────────────────────────── */
+/* วางไว้บนสุดของเนื้อการ์ด ใต้ชื่อ เพราะเป็นสิ่งที่คนเปิดหน้านี้มาดู
+   ตัวเลขอยู่ขวาของชื่อคอร์ส ไม่ใช่ใต้แถบ จะได้อ่านชื่อกับยอดในสายตาเดียว */
+.pcard__prog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.prog { display: flex; flex-direction: column; gap: 5px; }
+.prog__k {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-size: var(--t-xs);
+}
+.prog__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.prog__n {
+  flex-shrink: 0;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.prog__more { margin: 0; font-size: var(--t-xs); color: var(--mist); }
+
+.pcard__none {
+  margin: 0;
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+
+@media (max-width: 720px) {
+  /* ช่วงอายุมีได้ถึงหกปุ่ม ถ้าปล่อยให้ตกบรรทัดจะกินจอทั้งจอก่อนถึงการ์ดใบแรก
+     ให้เลื่อนข้างแทน แล้วดึงขอบออกไปชนขอบจอ จะได้เห็นว่ายังมีต่อ */
+  .chipbar--bands {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-left: calc(var(--sp-5) * -1);
+    margin-right: calc(var(--sp-5) * -1);
+    padding-left: var(--sp-5);
+    padding-right: var(--sp-5);
+  }
+  .chipbar--bands::-webkit-scrollbar { display: none; }
+  .chipbar--bands .chipbtn { flex-shrink: 0; }
+}
+
+/* ============================================================
+   Phase 8 — หน้าคอร์ส ผู้สอนประจำและมุมมองตามผู้สอน
+   ============================================================ */
+
+/* บรรทัดผู้สอนใต้ชื่อคอร์สในการ์ดการลงทะเบียน
+   เป็นข้อมูลระดับเดียวกับชื่อคอร์ส ไม่ใช่ป้าย จึงเป็นข้อความธรรมดา */
+.ecard__trainer {
+  margin: 2px 0 0;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+.ecard__guess { color: var(--mist); }
+.ecard__sub   { color: var(--coral); }
+
+.ecard__btns { display: flex; gap: var(--sp-2); flex-shrink: 0; }
+
+/* รายการคอร์สของผู้สอนหนึ่งคน */
+.tlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.ccard__who {
+  margin: var(--sp-2) 0 0;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+@media (max-width: 720px) {
+  /* ปุ่มสองปุ่มกับบรรทัดสรุปอยู่บรรทัดเดียวกันไม่พอบนจอแคบ */
+  .ecard__bottom { flex-wrap: wrap; }
+  .ecard__btns { width: 100%; }
+  .ecard__btns .btn { flex: 1 1 0; }
+}
+
+/* ============================================================
+   Phase 8 — คิวงานแบบคอลัมน์จริง
+   ใช้ในหน้าบันทึกกิจกรรม และเผื่อหน้าอื่นที่เป็นคิวงานเหมือนกัน
+   ============================================================ */
+
+/* จำกัดความกว้างไว้ ไม่ให้แถวยืดเต็มจอ
+   ข้อความห้าสิบตัวอักษรในแถวกว้างพันหกร้อยพิกเซลอ่านยากกว่าที่คิด
+   เพราะตาต้องกระโดดข้ามที่ว่างระหว่างคอลัมน์ */
+.qlist { max-width: 1180px; }
+
+.qhead, .qln {
+  display: grid;
+  grid-template-columns:
+    64px minmax(150px, 1.3fr) minmax(150px, 1.7fr)
+    minmax(90px, 0.9fr) 92px 84px;
+  gap: var(--sp-3);
+  align-items: center;
+}
+.qhead--p, .qln--p {
+  grid-template-columns: 96px minmax(150px, 1.4fr) minmax(110px, 1fr) 110px 70px;
+}
+
+.qhead {
+  padding: 0 var(--sp-4) var(--sp-2);
+  font-size: var(--t-xs);
+  color: var(--mist);
+}
+
+.qln {
+  width: 100%;
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  font: inherit;
+  font-size: var(--t-sm);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.qln:hover { border-color: var(--clay); }
+
+.qln__c { min-width: 0; display: block; }
+.qln__c--strong { font-weight: 500; }
+.qln__c small {
+  display: block;
+  font-size: var(--t-xs);
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.qln__c--late { color: var(--coral); }
+
+.qln__time b {
+  display: block;
+  font-family: var(--font-head);
+  font-weight: 500;
+}
+.qln__time small { color: var(--mist); }
+
+.qln__n {
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--cream);
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+}
+
+.qln__stars { color: var(--honey); letter-spacing: 1px; }
+
+.qln__go {
+  justify-self: end;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  font-size: var(--t-xs);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.qln:hover .qln__go { border-color: var(--clay); color: var(--clay); }
+
+/* ข้อควรระวังต้องอยู่ติดชื่อเด็ก และไม่พึ่งสีอย่างเดียว
+   จึงมีจุดนำหน้าด้วย คนที่แยกสีไม่ออกก็ยังเห็นว่าแถวนี้มีอะไรต่าง */
+.warn { color: var(--coral); }
+.warn::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  margin-bottom: 1px;
+  border-radius: 99px;
+  background: var(--coral);
+  vertical-align: middle;
+}
+
+@media (max-width: 860px) {
+  /* จอแคบพับเป็นสามบรรทัด ไม่ใช่หกบรรทัด
+     บรรทัดบนคือสิ่งที่ใช้เลือกว่าจะกดอันไหน เวลา คอร์ส และปุ่ม
+     บรรทัดกลางคือเด็กกับข้อควรระวัง บรรทัดล่างคือรายละเอียดที่เหลือเรียงคู่กัน
+     ถ้าปล่อยให้แต่ละคอลัมน์ขึ้นบรรทัดของตัวเอง แถวเดียวจะสูงเท่าครึ่งจอ */
+  .qhead { display: none; }
+  .qln {
+    grid-template-columns: 56px 1fr auto;
+    row-gap: 6px;
+  }
+  .qln__c:nth-child(1) { grid-column: 1; grid-row: 1; }
+  .qln__c:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .qln__go           { grid-column: 3; grid-row: 1; align-self: start; }
+  .qln__c:nth-child(3) { grid-column: 2 / 4; grid-row: 2; }
+  .qln__c:nth-child(4) { grid-column: 2;     grid-row: 3; }
+  .qln__c:nth-child(5) { grid-column: 3;     grid-row: 3; justify-self: end; }
+  .qln__c:nth-child(4),
+  .qln__c:nth-child(5) { font-size: var(--t-xs); color: var(--ink-soft); }
+
+  .qln--p { grid-template-columns: 1fr auto; }
+  .qln--p .qln__c:nth-child(1) { grid-column: 1; grid-row: 1;
+    font-size: var(--t-xs); color: var(--ink-soft); }
+  .qln--p .qln__c:nth-child(2) { grid-column: 1 / 3; grid-row: 2; }
+  .qln--p .qln__c:nth-child(3) { grid-column: 1; grid-row: 3; }
+  .qln--p .qln__c:nth-child(4) { grid-column: 2; grid-row: 3; justify-self: end; }
+  .qln--p .qln__go { grid-column: 2; grid-row: 1; justify-self: end; }
+}
+.qln__c--soon { color: var(--honey); }
+
+/* .warn ต้องชนะสีของ small ในแถว ไม่งั้นข้อความเตือนจะกลายเป็นสีจาง */
+.irow__who small.warn { color: var(--coral); }

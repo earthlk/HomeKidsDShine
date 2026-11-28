@@ -5,9 +5,10 @@
 
 const People = {
 
-  data:  { parents: [], children: [], canEdit: false, canManage: false },
+  data:  { parents: [], children: [], bands: [], canEdit: false, canManage: false },
   tab:   'children',   // เปิดที่แท็บเด็กก่อน เพราะเป็นข้อมูลที่ดูบ่อยที่สุด
   query: '',
+  band:  'all',        // ช่วงอายุที่กรองอยู่ all = ไม่กรอง แล้วแบ่งหัวข้อตามช่วงแทน
 
   // ── วาดหน้า ───────────────────────────────────────────────
   async render(el) {
@@ -54,6 +55,8 @@ const People = {
         </button>
       </div>
 
+      ${this.tab === 'children' ? this.bandBar() : ''}
+
       <div id="peopleList"></div>`;
 
     const box = el.querySelector('#peopleSearch');
@@ -66,6 +69,15 @@ const People = {
       b.onclick = () => { People.tab = b.dataset.tab; People.paint(el); };
     });
 
+    el.querySelectorAll('[data-band]').forEach(b => {
+      b.onclick = () => {
+        People.band = b.dataset.band;
+        el.querySelectorAll('[data-band]').forEach(x =>
+          x.classList.toggle('is-on', x.dataset.band === People.band));
+        People.paintList();
+      };
+    });
+
     el.querySelectorAll('[data-act]').forEach(b => {
       b.onclick = () => {
         if (b.dataset.act === 'new-parent') People.openParentForm();
@@ -76,13 +88,50 @@ const People = {
     this.paintList();
   },
 
+  // ── แถบช่วงอายุ ───────────────────────────────────────────
+  // เด็กสามสิบคนในตะแกรงเดียวหาอะไรไม่เจอ จึงแบ่งตามช่วงอายุ
+  // เพราะเป็นมิติที่ตรงกับการสอนจริง เด็กสี่ขวบกับสิบขวบคนละคอร์สกันอยู่แล้ว
+  // ช่วงที่ไม่มีเด็กเลยไม่ขึ้นปุ่ม จะได้ไม่ต้องกดหาในช่องว่าง
+  // เด็กไม่กี่คนไม่ต้องแบ่งกลุ่ม การ์ดทั้งหมดอยู่ในจอเดียวอยู่แล้ว
+  // ปุ่มกรองที่ไม่ได้ช่วยอะไรคือสิ่งที่ต้องอ่านทิ้งทุกครั้งที่เปิดหน้า
+  GROUP_FROM: 7,
+
+  bandBar() {
+    const kids  = this.data.children || [];
+    if (kids.length < this.GROUP_FROM) return '';
+
+    const bands = (this.data.bands || []).filter(b =>
+      kids.some(c => c.ageBand === b.id));
+
+    if (bands.length < 2) return '';
+
+    const chip = (id, label, n) => `
+      <button class="chipbtn${this.band === id ? ' is-on' : ''}" data-band="${UI.esc(id)}">
+        ${UI.esc(label)}<span class="chipbtn__n">${n}</span></button>`;
+
+    return `<div class="chipbar chipbar--bands">
+      ${chip('all', 'ทุกช่วงอายุ', kids.length)}
+      ${bands.map(b => chip(b.id, b.label,
+        kids.filter(c => c.ageBand === b.id).length)).join('')}
+    </div>`;
+  },
+
+  bandLabel(id) {
+    const b = (this.data.bands || []).find(x => x.id === id);
+    return b ? b.label : 'ไม่ระบุช่วงอายุ';
+  },
+
   // ── รายการการ์ด ───────────────────────────────────────────
   paintList() {
     const box = document.getElementById('peopleList');
     if (!box) return;
 
     const isChild = this.tab === 'children';
-    const rows    = this.filter(isChild ? this.data.children : this.data.parents);
+    let rows      = this.filter(isChild ? this.data.children : this.data.parents);
+
+    if (isChild && this.band !== 'all') {
+      rows = rows.filter(c => c.ageBand === this.band);
+    }
 
     // แยกกรณีไม่มีข้อมูลเลย กับหาไม่เจอ เพราะทางแก้ต่างกัน
     if (!rows.length) {
@@ -99,9 +148,27 @@ const People = {
       return;
     }
 
-    box.innerHTML = '<div class="pgrid">' +
-      rows.map(r => isChild ? this.childCard(r) : this.parentCard(r)).join('') +
-      '</div>';
+    // ไม่ได้กรองช่วงไหนอยู่ ก็แบ่งหัวข้อให้ตามช่วงอายุแทน
+    // คนที่กวาดตาหาเด็กคนหนึ่งจะได้ข้ามไปทีละกลุ่ม ไม่ต้องไล่ทีละการ์ด
+    const grouped = isChild && this.band === 'all' &&
+      (this.data.children || []).length >= this.GROUP_FROM;
+
+    if (grouped) {
+      const order = (this.data.bands || []).map(b => b.id);
+      box.innerHTML = order.map(id => {
+        const inBand = rows.filter(c => c.ageBand === id);
+        if (!inBand.length) return '';
+        return `<section class="pgroup">
+          <h3 class="pgroup__h">${UI.esc(this.bandLabel(id))}
+            <span class="pgroup__n">${inBand.length} คน</span></h3>
+          <div class="pgrid">${inBand.map(c => this.childCard(c)).join('')}</div>
+        </section>`;
+      }).join('');
+    } else {
+      box.innerHTML = '<div class="pgrid">' +
+        rows.map(r => isChild ? this.childCard(r) : this.parentCard(r)).join('') +
+        '</div>';
+    }
 
     box.querySelectorAll('[data-open]').forEach(c => {
       c.onclick = () => isChild
@@ -110,13 +177,56 @@ const People = {
     });
   },
 
+  // ค้นด้วยชื่อคอร์สและชื่อลูกได้ด้วย เพราะคนถามมักจำอย่างใดอย่างหนึ่ง
+  // เช่น "เด็กที่เรียนว่ายน้ำ" หรือ "แม่ของน้องมะลิ"
   filter(rows) {
     const q = this.query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(r =>
-      [r.name, r.nickname, r.phone, r.phoneAlt, r.school]
-        .some(v => String(v || '').toLowerCase().indexOf(q) >= 0)
-    );
+
+    return rows.filter(r => {
+      const extra = (r.courses || []).map(x => x.courseName)
+        .concat(r.kids || []);
+      return [r.name, r.nickname, r.phone, r.phoneAlt, r.school]
+        .concat(extra)
+        .some(v => String(v || '').toLowerCase().indexOf(q) >= 0);
+    });
+  },
+
+  // เพศที่ไม่รู้จักต้องขึ้นว่าไม่ระบุ ไม่ใช่ตกเป็นชายเงียบ ๆ
+  genderOf(c) {
+    if (c.gender === 'F') return 'หญิง';
+    if (c.gender === 'M') return 'ชาย';
+    return 'ไม่ระบุเพศ';
+  },
+
+  // ── แถบความคืบหน้าของคอร์สที่กำลังเรียน ───────────────────
+  // หนึ่งคอร์สหนึ่งแถบ เพราะเด็กคนหนึ่งเรียนได้หลายคอร์สพร้อมกัน
+  // ใช้แถบเดียวกับหน้าคอร์ส สีเขียวคือสอนแล้ว สีเหลืองคือนัดไว้แล้ว
+  // ช่องว่างท้ายแถบคือคาบที่จ่ายเงินมาแล้วแต่ยังไม่มีวัน นั่นคืองานที่ค้าง
+  progressRows(c) {
+    const list = (c.courses || []).slice(0, 3);
+    if (!list.length) return '';
+
+    return `<div class="pcard__prog">
+      ${list.map(x => {
+        const total = x.total || 1;
+        return `
+        <div class="prog">
+          <div class="prog__k">
+            <span class="prog__name">${UI.esc(x.courseName)}</span>
+            <span class="prog__n">${x.taught}/${x.total}${
+              x.unbooked ? ` · ยังไม่นัด ${x.unbooked}` : ''}</span>
+          </div>
+          <div class="bar" role="img"
+            aria-label="${UI.esc(x.courseName)} สอนแล้ว ${x.taught} จาก ${x.total} ครั้ง">
+            <span class="bar__done" style="width:${(x.taught / total) * 100}%"></span>
+            <span class="bar__booked" style="width:${(x.booked / total) * 100}%"></span>
+          </div>
+        </div>`;
+      }).join('')}
+      ${(c.courses || []).length > 3
+        ? `<p class="prog__more">และอีก ${(c.courses || []).length - 3} คอร์ส</p>` : ''}
+    </div>`;
   },
 
   // ── การ์ดเด็ก ─────────────────────────────────────────────
@@ -132,15 +242,17 @@ const People = {
             <h3 class="pcard__name">${UI.esc(c.nickname || c.name)}</h3>
             <p class="pcard__sub">${UI.esc(c.nickname ? c.name : '')}</p>
             <p class="pcard__meta">
-              ${c.gender === 'F' ? 'หญิง' : 'ชาย'}${c.dob ? ' · ' + UI.esc(this.age(c.dob)) : ''}
+              ${UI.esc(this.genderOf(c))}${c.dob ? ' · ' + UI.esc(this.age(c.dob)) : ''}
             </p>
           </div>
           ${c.bloodType ? `<span class="pchip pchip--blood">${UI.esc(c.bloodType)}</span>` : ''}
         </div>
 
+        ${this.progressRows(c)}
+
         <div class="pcard__body">
-          ${c.school       ? this.row('โรงเรียน', c.school) : ''}
-          ${c.trainingGoal ? this.row('เป้าหมาย', c.trainingGoal) : ''}
+          ${(c.courses || []).length ? '' :
+            '<p class="pcard__none">ยังไม่ได้ลงคอร์ส</p>'}
           ${parent ? this.row('ผู้ปกครอง',
               parent.name + (c.parentRelation ? ' (' + c.parentRelation + ')' : '') +
               (parent.phone ? ' · ' + parent.phone : '')) : ''}
@@ -196,7 +308,7 @@ const People = {
       </div>
 
       ${this.section('ข้อมูลทั่วไป', [
-        ['เพศ',       c.gender === 'F' ? 'หญิง' : 'ชาย'],
+        ['เพศ',       this.genderOf(c)],
         ['วันเกิด',   c.dob ? UI.thaiDate(c.dob) + ' · อายุ ' + this.age(c.dob) : ''],
         ['น้ำหนัก',   c.weight ? c.weight + ' กก.' : ''],
         ['ส่วนสูง',   c.height ? c.height + ' ซม.' : ''],

@@ -93,6 +93,7 @@ const Users = {
         </span>
         <span class="urow__tags">
           <span class="pchip pchip--${UI.esc(u.role)}">${this.LABEL[u.role] || u.role}</span>
+          ${u.verified ? '' : '<span class="pchip pchip--warn">รอยืนยันอีเมล</span>'}
           ${this.linkTag(u)}
           ${u.active ? '' : '<span class="pchip pchip--muted">ปิดใช้งาน</span>'}
         </span>
@@ -133,10 +134,22 @@ const Users = {
       ${People.section('บัญชี', [
         ['อีเมล', u.email],
         ['โทรศัพท์', u.phone],
+        ['การยืนยันอีเมล', u.verified ? 'ยืนยันแล้ว' : 'ยังไม่ยืนยัน'],
         ['สถานะ', u.active ? 'ใช้งานอยู่' : 'ปิดใช้งาน'],
         ['ข้อมูลที่ผูกไว้', u.linked],
         ['สร้างเมื่อ', u.createdAt ? UI.thaiDate(u.createdAt) : ''],
       ])}
+
+      ${u.verified ? '' : `
+        <div class="notice notice--warn">
+          บัญชีนี้ยังเข้าระบบไม่ได้ จนกว่าเจ้าตัวจะเปิดลิงก์ในอีเมลแล้วตั้งรหัสผ่านเอง
+          ${u.inviteExpires ? '<br>ลิงก์ที่ส่งไปใช้ได้ถึง ' + UI.esc(UI.thaiDate(u.inviteExpires)) : ''}
+        </div>
+        <div class="sheet__actions sheet__actions--single">
+          <button class="btn btn--ghost btn--block" data-act="resend" data-busy="กำลังส่ง">
+            ส่งลิงก์ยืนยันใหม่
+          </button>
+        </div>`}
 
       ${hint ? `<div class="notice notice--info">${hint}</div>` : ''}
 
@@ -166,6 +179,7 @@ const Users = {
       close:    () => UI.closeSheet(),
       edit:     () => { UI.closeSheet(); Users.openForm(u); },
       toggle:   () => Users.toggle(u.id),
+      resend:   () => Users.resend(u.id),
       unline:   () => Users.unlink(u.id, 'line'),
       ungoogle: () => Users.unlink(u.id, 'google'),
     });
@@ -206,9 +220,12 @@ const Users = {
       </div>
 
       ${editing ? '' : `
-        ${People.fgroup('รหัสผ่านแรกเข้า')}
-        ${People.finput('u_password', 'รหัสผ่าน', '', 'อย่างน้อย 8 ตัวอักษร')}
-        <p class="fhint">แจ้งรหัสนี้ให้เจ้าตัวแล้วบอกให้เปลี่ยนเองหลังเข้าใช้ครั้งแรก</p>`}
+        ${People.fgroup('การเข้าใช้งานครั้งแรก')}
+        <div class="notice notice--info">
+          บันทึกแล้วระบบจะส่งลิงก์ยืนยันไปที่อีเมลข้างบน
+          เจ้าตัวเปิดลิงก์แล้วตั้งรหัสผ่านของตัวเอง
+          ลิงก์ใช้ได้ 72 ชั่วโมง หมดอายุแล้วกดส่งใหม่ได้จากหน้านี้
+        </div>`}
 
       <div class="sheet__actions">
         <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
@@ -260,20 +277,80 @@ const Users = {
   async submit(id) {
     const payload = {
       id,
-      name:     People.val('u_name'),
-      email:    People.val('u_email'),
-      phone:    People.val('u_phone'),
-      role:     People.val('u_role'),
-      password: People.val('u_password'),
-      linkId:   People.val('u_linkId'),
+      name:   People.val('u_name'),
+      email:  People.val('u_email'),
+      phone:  People.val('u_phone'),
+      role:   People.val('u_role'),
+      linkId: People.val('u_linkId'),
     };
 
     const res = await API.call('saveUser', payload);
     if (!res.ok) { UI.toast(res.message, 'error'); return; }
 
-    UI.toast(id ? 'บันทึกการแก้ไขแล้ว' : 'เพิ่มผู้ใช้งานแล้ว');
     UI.closeSheet();
-    this.reload();
+    await this.reload();
+
+    // อีเมลออกไม่ได้ (โควตาหมด) ยังมีลิงก์ให้คัดลอกส่งเอง ไม่ต้องสร้างบัญชีใหม่
+    const invite = res.data && res.data.invite;
+    if (invite && !invite.sent) {
+      this.showLink(payload.email, invite.link);
+      return;
+    }
+
+    UI.toast(invite ? 'เพิ่มผู้ใช้งานแล้ว ส่งลิงก์ยืนยันไปที่อีเมลแล้ว'
+                    : 'บันทึกการแก้ไขแล้ว');
+  },
+
+  // ── ลิงก์ยืนยันสำรอง ──────────────────────────────────────
+  // ใช้ตอนส่งอีเมลไม่สำเร็จ ลิงก์นี้เท่ากับรหัสผ่าน ส่งให้เจ้าตัวโดยตรงเท่านั้น
+  showLink(email, link) {
+    UI.openSheet(`
+      <div class="sheet__title">ส่งอีเมลไม่สำเร็จ</div>
+      <p class="sheet__sub">บัญชีสร้างแล้ว แต่อีเมลออกไม่ได้ อาจเป็นเพราะโควตาส่งอีเมลของวันนี้หมด</p>
+
+      <div class="notice notice--warn">
+        คัดลอกลิงก์ข้างล่างส่งให้ ${UI.esc(email)} โดยตรง
+        ลิงก์นี้ตั้งรหัสผ่านของบัญชีได้ ส่งให้เจ้าตัวเท่านั้น ห้ามส่งในกลุ่ม
+      </div>
+
+      <div class="linkbox">
+        <code class="linkbox__url" id="ilink">${UI.esc(link)}</code>
+        <button class="btn btn--ghost btn--sm" data-act="copy">คัดลอก</button>
+      </div>
+
+      <div class="sheet__actions">
+        <button class="btn btn--primary" data-act="close">เรียบร้อย</button>
+      </div>`);
+
+    People.bindSheet({
+      close: () => UI.closeSheet(),
+      copy:  async () => {
+        try {
+          await navigator.clipboard.writeText(link);
+          UI.toast('คัดลอกลิงก์แล้ว');
+        } catch (e) {
+          // หน้าเว็บที่ไม่ใช่ https หรือเบราว์เซอร์เก่าใช้ clipboard ไม่ได้
+          const el    = document.getElementById('ilink');
+          const range = document.createRange();
+          range.selectNodeContents(el);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          UI.toast('เลือกลิงก์ไว้แล้ว กดคัดลอกเองได้เลย');
+        }
+      },
+    });
+  },
+
+  async resend(id) {
+    const res = await API.call('resendInvite', { id });
+    if (!res.ok) { UI.toast(res.message, 'error'); return; }
+
+    UI.closeSheet();
+    await this.reload();
+
+    if (!res.data.sent) { this.showLink(res.data.email, res.data.link); return; }
+    UI.toast('ส่งลิงก์ยืนยันไปที่ ' + res.data.email + ' แล้ว');
   },
 
   async toggle(id) {

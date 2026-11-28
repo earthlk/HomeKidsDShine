@@ -40,6 +40,10 @@ const Courses = {
           data-tab="catalog" role="tab">
           รายการคอร์ส <span class="segbar__count">${d.courses.length}</span>
         </button>
+        <button class="segbar__btn${this.tab === 'byTrainer' ? ' is-on' : ''}"
+          data-tab="byTrainer" role="tab">
+          ตามผู้สอน <span class="segbar__count">${(d.byTrainer || []).length}</span>
+        </button>
       </div>` : '';
 
     const actions = d.canEdit ? `
@@ -61,7 +65,8 @@ const Courses = {
     el.innerHTML = `
       ${search}
       ${tabs}
-      ${d.canEdit ? (this.tab === 'enrollments' ? this.filterBar() : this.catBar()) : ''}
+      ${d.canEdit && this.tab === 'enrollments' ? this.filterBar() : ''}
+      ${d.canEdit && this.tab === 'catalog'     ? this.catBar()    : ''}
       <div id="courseList"></div>`;
 
     const box = el.querySelector('#courseSearch');
@@ -104,13 +109,17 @@ const Courses = {
 
   // แถบกรองตามสถานะ นับจำนวนในแต่ละกลุ่มให้เห็นเลยว่ามีกี่รายการ
   filterBar() {
-    const all = this.data.enrollments;
+    const all  = this.data.enrollments;
+    const noT  = all.filter(e => !e.trainerId && e.state !== 'closed').length;
     const groups = [
       ['all',       'ทั้งหมด',    all.length],
       ['active',    'กำลังเรียน', all.filter(e => e.state === 'active').length],
       ['completed', 'เรียนจบ',    all.filter(e => e.state === 'completed').length],
       ['closed',    'ปิดรายการ',  all.filter(e => e.state === 'closed').length],
     ];
+
+    // ขึ้นเฉพาะตอนที่มีจริง เพราะเป็นของค้างที่ต้องเคลียร์ ไม่ใช่ตัวกรองถาวร
+    if (noT) groups.push(['noTrainer', 'ยังไม่มีผู้สอน', noT]);
 
     return '<div class="chipbar">' + groups.map(([v, label, n]) =>
       `<button class="chipbtn${this.state === v ? ' is-on' : ''}" data-state="${v}">
@@ -143,7 +152,8 @@ const Courses = {
     const box = document.getElementById('courseList');
     if (!box) return;
 
-    if (this.tab === 'catalog') { this.paintCatalog(box); return; }
+    if (this.tab === 'catalog')   { this.paintCatalog(box); return; }
+    if (this.tab === 'byTrainer') { this.paintTrainers(box); return; }
 
     const rows = this.filterRows(this.data.enrollments);
     // แยกกรณีไม่มีข้อมูลเลย กับกรองแล้วไม่เจอ เพราะทางแก้ต่างกัน
@@ -168,14 +178,20 @@ const Courses = {
     box.querySelectorAll('[data-book]').forEach(b => {
       b.onclick = (ev) => { ev.stopPropagation(); Courses.book(b.dataset.book); };
     });
+
+    box.querySelectorAll('[data-trainer]').forEach(b => {
+      b.onclick = (ev) => { ev.stopPropagation(); Courses.openTrainerForm(b.dataset.trainer); };
+    });
   },
 
   filterRows(rows) {
     const q = this.query.trim().toLowerCase();
     return rows.filter(e => {
-      if (this.state !== 'all' && e.state !== this.state) return false;
+      if (this.state === 'noTrainer') {
+        if (e.trainerId || e.state === 'closed') return false;
+      } else if (this.state !== 'all' && e.state !== this.state) return false;
       if (!q) return true;
-      return [e.childName, e.childFullName, e.courseName]
+      return [e.childName, e.childFullName, e.courseName, e.trainerName]
         .some(v => String(v || '').toLowerCase().indexOf(q) >= 0);
     });
   },
@@ -183,7 +199,6 @@ const Courses = {
   // ── การ์ดการลงทะเบียน ─────────────────────────────────────
   enrollCard(e) {
     const total = e.totalSessions || 1;
-    const pct   = Math.round((e.done / total) * 100);
 
     // เตือนเมื่อเหลือน้อย เพราะเป็นจังหวะที่ต้องชวนต่อคอร์ส
     const low = e.state === 'active' && e.remaining > 0 && e.remaining <= 2;
@@ -195,6 +210,15 @@ const Courses = {
           <div>
             <h3 class="ecard__child">${UI.esc(e.childName)}</h3>
             <p class="ecard__course">${UI.esc(e.courseName)}</p>
+            ${/* ค่าที่ระบบเดามาจากคาบที่ลงไว้ไม่ติดป้ายบนการ์ด เพราะเกือบทุกใบจะติด
+                  แล้วกลายเป็นข้อความที่ทุกคนเรียนรู้ที่จะมองข้าม
+                  คำอธิบายไปอยู่ในกล่องเปลี่ยนผู้สอน ตรงจุดที่ต้องตัดสินใจจริง */
+              this.data.canEdit ? `<p class="ecard__trainer">${
+              e.trainerId
+                ? 'ผู้สอน ' + UI.esc(e.trainerName) +
+                  (e.subCount ? ` · <span class="ecard__sub">มีคนสอนแทน ${e.subCount} คาบ</span>` : '')
+                : '<span class="ecard__sub">ยังไม่ได้กำหนดผู้สอน</span>'
+            }</p>` : ''}
           </div>
           ${this.stateChip(e.state)}
         </div>
@@ -226,12 +250,20 @@ const Courses = {
 
         <div class="ecard__bottom">
           <p class="ecard__foot">
-            ${pct}% ของคอร์ส${e.startDate ? ' · ลงทะเบียน ' + UI.thaiDate(e.startDate, 'short') : ''}
+            ${/* ไม่ต้องบอกเปอร์เซ็นต์ซ้ำ แถบข้างบนบอกไปแล้ว
+                 บรรทัดนี้เก็บไว้ให้ข้อมูลที่แถบบอกไม่ได้ */''}
+            ${e.startDate ? 'ลงทะเบียน ' + UI.thaiDate(e.startDate, 'short') : ''}
             ${e.price ? ' · ' + e.price.toLocaleString() + ' บาท' : ''}
           </p>
-          ${this.data.canEdit && e.state === 'active' && e.remaining > 0
-            ? `<button class="btn btn--ghost btn--sm" data-book="${UI.esc(e.id)}">ลงนัด</button>`
-            : ''}
+          <span class="ecard__btns">
+            ${this.data.canEdit && e.state !== 'closed'
+              ? `<button class="btn btn--ghost btn--sm" data-trainer="${UI.esc(e.id)}">${
+                  e.trainerId ? 'เปลี่ยนผู้สอน' : 'กำหนดผู้สอน'}</button>`
+              : ''}
+            ${this.data.canEdit && e.state === 'active' && e.remaining > 0
+              ? `<button class="btn btn--ghost btn--sm" data-book="${UI.esc(e.id)}">ลงนัด</button>`
+              : ''}
+          </span>
         </div>
       </article>`;
   },
@@ -240,6 +272,197 @@ const Courses = {
   // เงื่อนไขเดียวกับที่หลังบ้านตรวจ จะได้ไม่ขึ้นปุ่มที่กดแล้วโดนปฏิเสธ
   canBook(e) {
     return this.data.canEdit && e.state === 'active' && e.remaining > 0;
+  },
+
+  // ── มุมมองตามผู้สอน ───────────────────────────────────────
+  // คำถามที่หน้านี้ต้องตอบคือใครงานล้นใครยังว่าง และแต่ละคนถืออะไรอยู่
+  // จึงเรียงตามจำนวนเด็ก และให้คนที่ยังไม่มีงานอยู่ท้ายแต่ยังต้องเห็น
+  // ไม่ใช้ค่าเฉลี่ยหรือคะแนนรวม เพราะคนแบ่งงานต้องเห็นของจริงว่าถืออะไร
+  paintTrainers(box) {
+    const list = this.data.byTrainer || [];
+    if (!list.length) {
+      box.innerHTML = UI.empty('ยังไม่มีผู้ฝึกสอน',
+        'เพิ่มผู้ฝึกสอนในหน้าผู้ฝึกสอนก่อน แล้วค่อยกำหนดว่าใครสอนคอร์สไหน');
+      return;
+    }
+
+    const q = this.query.trim().toLowerCase();
+    const rows = q
+      ? list.filter(t => [t.name].concat(t.courses.map(c => c.name))
+          .some(v => String(v || '').toLowerCase().indexOf(q) >= 0))
+      : list;
+
+    if (!rows.length) {
+      box.innerHTML = UI.empty('ไม่พบผู้สอนที่ค้นหา', 'ลองพิมพ์ชื่อผู้สอนหรือชื่อคอร์ส');
+      return;
+    }
+
+    box.innerHTML = '<div class="pgrid">' + rows.map(t => {
+      const idle = t.kids === 0;
+
+      return `
+      <article class="ccard${idle ? ' ccard--off' : ''}">
+        <div class="ecard__head">
+          <div>
+            <h3 class="ecard__child">${UI.esc(t.name)}</h3>
+            <p class="ecard__course">${t.assigned
+              ? (idle ? 'ยังไม่ได้ถือคอร์สไหนเลย'
+                      : `ถือ ${t.courses.length} คอร์ส · เด็ก ${t.kids} คน`)
+              : 'การลงทะเบียนที่ยังไม่ได้ระบุว่าใครสอน'}</p>
+          </div>
+          ${idle ? '<span class="pchip pchip--ok">ว่างรับงาน</span>' : ''}
+          ${!t.assigned ? '<span class="pchip pchip--warn">ต้องกำหนดผู้สอน</span>' : ''}
+        </div>
+
+        ${t.courses.length ? `<div class="tlist">
+          ${t.courses.map(c => {
+            const total = c.total || 1;
+            return `
+            <div class="prog">
+              <div class="prog__k">
+                <span class="prog__name">${UI.esc(c.name)}</span>
+                <span class="prog__n">เด็ก ${c.kids} · ${c.done}/${c.total} คาบ</span>
+              </div>
+              <div class="bar" role="img"
+                aria-label="${UI.esc(c.name)} สอนแล้ว ${c.done} จาก ${c.total} คาบ">
+                <span class="bar__done" style="width:${(c.done / total) * 100}%"></span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}
+
+        <div class="tally">
+          <div class="tally__item">
+            <span class="tally__num">${t.courses.length}</span>
+            <span class="tally__label">คอร์ส</span>
+          </div>
+          <div class="tally__item">
+            <span class="tally__num">${t.kids}</span>
+            <span class="tally__label">เด็ก</span>
+          </div>
+          <div class="tally__item">
+            <span class="tally__num tally__num--booked">${t.upcoming}</span>
+            <span class="tally__label">นัดข้างหน้า</span>
+          </div>
+          <div class="tally__item">
+            <span class="tally__num tally__num--muted">${Math.max(0, t.total - t.done)}</span>
+            <span class="tally__label">ยังต้องสอน</span>
+          </div>
+        </div>
+
+        ${!t.assigned ? `<div class="ccard__actions">
+          <button class="btn btn--ghost btn--sm" data-unassigned="1">ดูรายการที่ยังไม่มีผู้สอน</button>
+        </div>` : ''}
+      </article>`;
+    }).join('') + '</div>';
+
+    box.querySelectorAll('[data-unassigned]').forEach(b => {
+      b.onclick = () => {
+        Courses.tab   = 'enrollments';
+        Courses.state = 'noTrainer';
+        Courses.query = '';
+        Courses.paint(document.getElementById('page'));
+      };
+    });
+  },
+
+  // ── เปลี่ยนผู้สอนประจำ ────────────────────────────────────
+  // สองทางเลือกที่ต่างกันจริง จึงให้เห็นผลก่อนเลือก ไม่ใช่เดาจากชื่อปุ่ม
+  openTrainerForm(id) {
+    const e = this.data.enrollments.find(x => String(x.id) === String(id));
+    if (!e) return;
+
+    const options = (this.data.trainers || []).map(t =>
+      `<option value="${UI.esc(t.id)}"${String(t.id) === String(e.trainerId) ? ' selected' : ''}>
+        ${UI.esc(t.name)}</option>`).join('');
+
+    // คาบที่นัดไว้ข้างหน้ามีกี่คาบ บอกให้รู้ก่อนว่าจะกระทบเท่าไร
+    const today = UI.today();
+    const ahead = (e.history || []).filter(h =>
+      h.status === 'scheduled' && String(h.date) >= today).length;
+
+    UI.openSheet(`
+      <div class="dhead">
+        <div>
+          <h2 class="dhead__name">เปลี่ยนผู้สอนประจำ</h2>
+          <p class="dhead__sub">${UI.esc(e.childName)} · ${UI.esc(e.courseName)}</p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="t_trainer">ผู้สอนประจำ</label>
+        <select class="field__input" id="t_trainer">
+          <option value="">— เลือกผู้สอน —</option>
+          ${options}
+        </select>
+        ${e.trainerId && !e.trainerSet
+          ? `<p class="fhint">ตอนนี้ยังไม่เคยกำหนดไว้ ระบบเดาจากคาบที่ลงไว้ว่าเป็น
+             ${UI.esc(e.trainerName)} กดบันทึกเพื่อยืนยันให้เป็นค่าจริง</p>` : ''}
+      </div>
+
+      <div class="picks">
+        <label class="pick">
+          <input type="radio" name="t_scope" value="future" checked>
+          <span class="pick__b">
+            <span class="pick__t">ย้ายคาบที่นัดไว้ข้างหน้าไปด้วย</span>
+            <span class="pick__d">${ahead
+              ? `คาบที่ยังไม่ถึง ${ahead} คาบจะเปลี่ยนเป็นผู้สอนคนใหม่
+                 คาบไหนชนตารางของเขาจะข้ามไว้แล้วบอกให้รู้`
+              : 'ตอนนี้ยังไม่มีคาบที่นัดไว้ข้างหน้า มีผลกับคาบที่นัดใหม่หลังจากนี้'}</span>
+          </span>
+        </label>
+        <label class="pick">
+          <input type="radio" name="t_scope" value="only">
+          <span class="pick__b">
+            <span class="pick__t">เปลี่ยนเฉพาะผู้สอนประจำ</span>
+            <span class="pick__d">คาบที่นัดไว้แล้วยังเป็นของคนเดิม
+              ใช้ตอนที่คนเดิมรับสอนให้จบรอบนี้ก่อน แล้วค่อยส่งต่อ</span>
+          </span>
+        </label>
+      </div>
+
+      <p class="fhint">คาบที่สอนไปแล้วไม่เปลี่ยน เพราะเป็นประวัติและผูกกับค่าสอนที่จ่ายไปแล้ว
+        ถ้าแค่วันเดียวที่มีคนสอนแทน ให้ไปแก้ผู้สอนที่คาบนั้นในหน้าตารางนัดแทน</p>
+
+      <div class="sheet__actions">
+        <button class="btn btn--ghost" data-act="close">ยกเลิก</button>
+        <button class="btn btn--primary" data-act="save" data-busy="กำลังบันทึก">บันทึก</button>
+      </div>`);
+
+    People.bindSheet({
+      close: () => UI.closeSheet(),
+      save:  () => Courses.saveTrainer(e.id),
+    });
+  },
+
+  async saveTrainer(id) {
+    const trainerId = People.val('t_trainer');
+    if (!trainerId) { UI.toast('เลือกผู้สอนก่อน', 'error'); return; }
+
+    const scope = document.querySelector('[name="t_scope"]:checked');
+    const res = await API.call('setEnrollmentTrainer', {
+      enrollmentId: id,
+      trainerId:    trainerId,
+      applyFuture:  !scope || scope.value === 'future',
+    });
+
+    if (!res.ok) { UI.toast(res.message, 'error'); return; }
+
+    UI.closeSheet();
+
+    // บอกผลตรง ๆ ว่าย้ายได้กี่คาบและคาบไหนย้ายไม่ได้เพราะอะไร
+    // ถ้าเงียบไป คนสั่งจะเข้าใจว่าย้ายครบแล้วทั้งที่ยังมีคาบค้างอยู่กับคนเดิม
+    const d = res.data;
+    if (d.skipped && d.skipped.length) {
+      UI.toast(`ย้ายให้ ${d.moved} คาบ อีก ${d.skipped.length} คาบย้ายไม่ได้ ` +
+        `เพราะ${d.skipped[0].why} ต้องไปแก้รายคาบในหน้าตารางนัด`, 'error');
+    } else {
+      UI.toast(`ผู้สอนประจำเป็น ${d.trainerName} แล้ว` +
+        (d.moved ? ` · ย้ายคาบที่นัดไว้ ${d.moved} คาบ` : ''));
+    }
+
+    App.invalidate();
+    await this.render(document.getElementById('page'));
   },
 
   // ── รายการคอร์ส ───────────────────────────────────────────
@@ -282,6 +505,24 @@ const Courses = {
 
         ${c.description ? `<p class="ccard__desc">${UI.esc(c.description)}</p>` : ''}
 
+        ${money && c.activeKids ? `
+          <div class="prog">
+            <div class="prog__k">
+              <span class="prog__name">ความคืบหน้ารวมของเด็กที่กำลังเรียน</span>
+              <span class="prog__n">${c.doneSessions}/${c.totalPlanned} คาบ</span>
+            </div>
+            <div class="bar" role="img"
+              aria-label="สอนไปแล้ว ${c.doneSessions} จาก ${c.totalPlanned} คาบ">
+              <span class="bar__done"
+                style="width:${(c.doneSessions / (c.totalPlanned || 1)) * 100}%"></span>
+            </div>
+          </div>
+          <p class="ccard__who">${c.trainers.length
+            ? 'ผู้สอน ' + c.trainers.map(t => UI.esc(t.name || 'ยังไม่กำหนด') +
+                ' (' + t.kids + ')').join(' · ')
+            : 'ยังไม่ได้กำหนดผู้สอน'}</p>
+        ` : ''}
+
         <div class="tally">
           <div class="tally__item">
             <span class="tally__num">${c.totalSessions}</span>
@@ -317,7 +558,7 @@ const Courses = {
 
         ${money ? `
           <p class="ecard__foot">
-            กำลังเรียน ${c.enrolled} คน · เหลือให้ศูนย์
+            กำลังเรียน ${c.activeKids} คน · เหลือให้ศูนย์
             ${((c.price || 0) - (c.trainerFee || 0) * c.totalSessions).toLocaleString()} บาทต่อคอร์ส
           </p>
 

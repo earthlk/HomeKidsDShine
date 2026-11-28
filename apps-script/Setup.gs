@@ -6,7 +6,6 @@
 // ลำดับการรัน:
 //   1. createNewSpreadsheet()   → ได้ ID ชีตใหม่ เอาไปใส่ใน Config.gs
 //   2. createAdminUser()        → สร้างบัญชีผู้ดูแลระบบตัวแรก
-//   3. migrateFromOldSheet()    → ย้ายข้อมูลที่ใช้จริงจากชีตเก่า (ถ้าต้องการ)
 //
 // ============================================================
 
@@ -15,21 +14,9 @@ function createNewSpreadsheet() {
   const ss = SpreadsheetApp.create('Homey Kids D Shine — ฐานข้อมูล');
 
   Object.keys(SCHEMA).forEach((name, i) => {
-    const headers = SCHEMA[name];
     // ชีตแรกใช้ Sheet1 ที่มีอยู่แล้ว เปลี่ยนชื่อแทนการสร้างใหม่
-    const sheet = i === 0 ? ss.getSheets()[0].setName(name) : ss.insertSheet(name);
-
-    sheet.getRange(1, 1, 1, headers.length)
-      .setValues([headers])
-      .setFontWeight('bold')
-      .setFontColor('#FFFFFF')
-      .setBackground('#A96246');
-
-    sheet.setFrozenRows(1);
-    // ตัดคอลัมน์ว่างที่เกินออก ให้ getLastColumn() คืนค่าตรงกับ schema
-    if (sheet.getMaxColumns() > headers.length) {
-      sheet.deleteColumns(headers.length + 1, sheet.getMaxColumns() - headers.length);
-    }
+    const existing = i === 0 ? ss.getSheets()[0].setName(name) : null;
+    makeSheet(ss, name, existing);
   });
 
   Logger.log('════════════════════════════════════');
@@ -72,111 +59,24 @@ function createAdminUser() {
   Logger.log('════════════════════════════════════');
 }
 
-// ── ขั้นที่ 3: ย้ายข้อมูลจากชีตเก่า ─────────────────────────
-// ย้ายเฉพาะข้อมูลที่ใช้จริง:
-//   - ผู้ปกครองที่มีเด็กในสังกัด (ตัดแถวขยะ 27 แถวออก)
-//   - เด็กทุกคน
-//   - คอร์สทุกคอร์ส
-// ไม่ย้าย: นัดหมายเก่า, log, consent — เริ่มนับใหม่จะสะอาดกว่า
-//
-// รันแบบ dryRun = true ก่อนเสมอ เพื่อดูว่าจะย้ายอะไรบ้าง
-function migrateFromOldSheet() {
-  const DRY_RUN = true;   // ← เปลี่ยนเป็น false เมื่อตรวจผลแล้วพอใจ
-
-  const old = SpreadsheetApp.openById(OLD_SPREADSHEET_ID);
-
-  const oldRead = (name) => {
-    const sheet = old.getSheetByName(name);
-    if (!sheet || sheet.getLastRow() < 2) return [];
-    const values  = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
-    const headers = values[0].map(h => String(h).trim());
-    return values.slice(1)
-      .filter(r => r.some(c => c !== '' && c !== null))
-      .map(r => {
-        const o = {};
-        headers.forEach((h, i) => { o[h] = cellToValue(r[i]); });
-        return o;
-      });
-  };
-
-  const oldParents  = oldRead('Parents');
-  const oldChildren = oldRead('Children');
-  const oldCourses  = oldRead('Courses');
-
-  // เก็บเฉพาะผู้ปกครองที่มีเด็กในสังกัดจริง
-  const parentIdsWithKids = {};
-  oldChildren.forEach(c => { parentIdsWithKids[String(c.parentId)] = true; });
-  const keepParents = oldParents.filter(p => parentIdsWithKids[String(p.id)]);
-
-  Logger.log('════════════════════════════════════');
-  Logger.log(DRY_RUN ? '🔍 ทดลองรัน (ยังไม่เขียนข้อมูลจริง)' : '✍️ เขียนข้อมูลจริง');
-  Logger.log('ผู้ปกครอง: มี ' + oldParents.length + ' แถว → ย้าย ' + keepParents.length +
-             ' แถว (ตัดแถวไม่มีเด็กในสังกัด ' + (oldParents.length - keepParents.length) + ' แถว)');
-  Logger.log('เด็ก: ย้าย ' + oldChildren.length + ' คน');
-  Logger.log('คอร์ส: ย้าย ' + oldCourses.length + ' คอร์ส');
-  Logger.log('────────────────────────────────────');
-
-  keepParents.forEach(p => Logger.log('  ผู้ปกครอง: ' + p.name + ' (' + p.id + ')'));
-  oldChildren.forEach(c => Logger.log('  เด็ก: ' + c.name + ' (' + c.id + ')'));
-  oldCourses.forEach(c => Logger.log('  คอร์ส: ' + c.name));
-
-  if (DRY_RUN) {
-    Logger.log('────────────────────────────────────');
-    Logger.log('→ ถ้าผลลัพธ์ถูกต้อง แก้ DRY_RUN เป็น false แล้วรันใหม่');
-    Logger.log('════════════════════════════════════');
-    return;
-  }
-
-  // ── เขียนจริง ──
-  keepParents.forEach(p => {
-    insertRow(SHEET.PARENTS, {
-      id: p.id, userId: p.userId || '', name: p.name || '', nickname: p.nickname || '',
-      phone: p.phone || '', phoneAlt: p.phoneAlt || '', email: p.email || '',
-      lineId: p.lineId || '', address: p.address || '',
-      receiptName: p.receiptName || '', taxId: p.taxId || '',
-      createdAt: p.createdAt || nowTH(), updatedAt: '',
-    });
-  });
-
-  oldChildren.forEach(c => {
-    insertRow(SHEET.CHILDREN, {
-      id: c.id, parentId: c.parentId || '', parentRelation: c.parentRelationship || '',
-      name: c.name || '', nickname: c.nickname || '', dob: c.dob || '', gender: c.gender || '',
-      weight: c.weight || '', height: c.height || '', bloodType: c.bloodType || '',
-      medicalConditions: c.medicalConditions || '', foodAllergy: c.foodAllergy || '',
-      drugAllergy: c.drugAllergy || '', medications: c.medications || '',
-      physicalLimitation: c.physicalLimitation || '',
-      emergencyName: c.emergencyContact || '', emergencyPhone: c.emergencyPhone || '',
-      emergencyRelation: c.emergencyRelation || '',
-      doctorName: c.doctorName || '', doctorPhone: c.doctorPhone || '',
-      school: c.school || '', trainingGoal: c.trainingGoal || '', notes: c.notes || '',
-      createdAt: c.createdAt || nowTH(), updatedAt: '',
-    });
-  });
-
-  oldCourses.forEach(c => {
-    insertRow(SHEET.COURSES, {
-      id: c.id, name: c.name || '', description: c.description || '',
-      category: c.category || '', totalSessions: c.totalSessions || '',
-      price: c.price || '', trainerFee: c.trainerFee || '',
-      durationMin: 60, active: true,
-      createdAt: c.createdAt || nowTH(), updatedAt: '',
-    });
-  });
-
-  Logger.log('ย้ายข้อมูลเรียบร้อย ✅');
-  Logger.log('════════════════════════════════════');
-}
-
 // ── เติมคอลัมน์ที่ขาด ───────────────────────────────────────
 // รันเมื่ออัปเดตโค้ดแล้ว checkSetup แจ้งว่าชีตขาดคอลัมน์
 // เพิ่มต่อท้ายเท่านั้น ไม่แตะคอลัมน์เดิม ข้อมูลที่มีอยู่จึงไม่เลื่อน
 function repairSheets() {
   let added = 0;
+  let made  = 0;
 
   Object.keys(SCHEMA).forEach(name => {
-    const sheet = getSS().getSheetByName(name);
-    if (!sheet) { Logger.log('ไม่มีชีต ' + name + ' — รัน createNewSpreadsheet ก่อน'); return; }
+    let sheet = getSS().getSheetByName(name);
+
+    // ชีตใหม่ที่เพิ่มเข้ามาทีหลัง เช่น Payouts ของ Phase 6
+    // สร้างให้เลย ไม่ต้องไปรัน createNewSpreadsheet ซึ่งสร้างไฟล์ใหม่ทั้งไฟล์
+    if (!sheet) {
+      sheet = makeSheet(getSS(), name);
+      made++;
+      Logger.log('สร้างชีตใหม่: ' + name);
+      return;   // สร้างพร้อมหัวคอลัมน์ครบแล้ว ไม่ต้องตรวจต่อ
+    }
 
     const lastCol = sheet.getLastColumn();
     const headers = lastCol
@@ -198,7 +98,39 @@ function repairSheets() {
     Logger.log('เพิ่มใน ' + name + ': ' + missing.join(', '));
   });
 
-  Logger.log(added ? 'เพิ่มคอลัมน์ทั้งหมด ' + added + ' คอลัมน์' : 'คอลัมน์ครบอยู่แล้ว');
+  if (!made && !added) Logger.log('ชีตและคอลัมน์ครบอยู่แล้ว ไม่มีอะไรต้องซ่อม');
+  else Logger.log('สร้างชีตใหม่ ' + made + ' ชีต · เพิ่มคอลัมน์ ' + added + ' คอลัมน์');
+}
+
+// ── สร้างชีตหนึ่งชีตพร้อมหัวคอลัมน์ตาม SCHEMA ───────────────
+// ใช้ร่วมกันระหว่าง createNewSpreadsheet กับ repairSheets
+// เขียนที่เดียว หัวตารางของชีตใหม่จะได้หน้าตาเหมือนของเดิมเสมอ
+function makeSheet(ss, name, existing) {
+  const headers = SCHEMA[name];
+  if (!headers) throw new Error('ไม่มี schema ของชีต: ' + name);
+
+  const sheet = existing || ss.insertSheet(name);
+
+  sheet.getRange(1, 1, 1, headers.length)
+    .setValues([headers])
+    .setFontWeight('bold')
+    .setFontColor('#FFFFFF')
+    .setBackground('#A96246');
+
+  sheet.setFrozenRows(1);
+
+  // ตัดคอลัมน์ว่างที่เกินออก ให้ getLastColumn() คืนค่าตรงกับ schema
+  if (sheet.getMaxColumns() > headers.length) {
+    sheet.deleteColumns(headers.length + 1, sheet.getMaxColumns() - headers.length);
+  }
+
+  // ตั้งรูปแบบคอลัมน์เบอร์โทรและเลขบัญชีเป็นข้อความตั้งแต่ต้น
+  // กันชีตแปลงเป็นตัวเลขแล้วตัดศูนย์หน้าทิ้ง
+  headers.forEach((h, i) => {
+    if (isTextyField(h)) sheet.getRange(2, i + 1, sheet.getMaxRows() - 1, 1).setNumberFormat('@');
+  });
+
+  return sheet;
 }
 
 // ── ซ่อมเบอร์โทรที่ศูนย์หน้าหายไปแล้ว ───────────────────────
@@ -281,4 +213,50 @@ function checkSetup() {
     Logger.log((missing.length ? '⚠️ ' : '✅ ') + name + ' — ' + rows + ' แถว' +
                (missing.length ? ' | ขาดคอลัมน์: ' + missing.join(', ') : ''));
   });
+
+  checkFiles();
+}
+
+// ── ตรวจว่าวางไฟล์ .gs ครบทุกไฟล์หรือยัง ────────────────────
+// Apps Script ไม่สร้างไฟล์ใหม่ให้เอง ถ้าวางทับไฟล์เดิมอย่างเดียว
+// ไฟล์ที่เพิ่งเพิ่มเข้ามาจะหายไป แล้วพังตอนใช้งานจริงว่า "xxx is not defined"
+// ตรวจจากฟังก์ชันตัวแทนหนึ่งตัวต่อหนึ่งไฟล์
+function checkFiles() {
+  const NEED = {
+    'Utils.gs':      'readAll',
+    'Auth.gs':       'revokeSessions',
+    'Invites.gs':    'isVerified',
+    'Main.gs':       'route',
+    'People.gs':     'getPeople',
+    'Courses.gs':    'getCourseBoard',
+    'Sessions.gs':   'getSchedule',
+    'Activities.gs': 'getActivityBoard',
+    'Trainers.gs':   'getTrainerBoard',
+    'Users.gs':      'getUsers',
+    'Finance.gs':    'getFinanceBoard',
+    'Settings.gs':   'getSettings',
+    'Ledger.gs':     'getLedger',
+    'Attendance.gs': 'getAttendanceBoard',
+  };
+
+  const missing = [];
+  Object.keys(NEED).forEach(file => {
+    // typeof กับชื่อที่ไม่มีอยู่จริงคืน 'undefined' เฉย ๆ ไม่ throw
+    // จึงใช้ตรวจได้ปลอดภัย ไม่ต้องพึ่ง globalThis ที่ GAS อาจไม่ยกฟังก์ชันขึ้นไปให้
+    let ok = false;
+    try {
+      ok = eval('typeof ' + NEED[file]) === 'function';
+    } catch (e) {
+      ok = false;
+    }
+    if (!ok) missing.push(file + ' (ไม่พบ ' + NEED[file] + ')');
+  });
+
+  if (missing.length) {
+    Logger.log('❌ ยังไม่ได้วางไฟล์เหล่านี้ในโปรเจ็กต์:');
+    missing.forEach(m => Logger.log('   • ' + m));
+    Logger.log('   → กด + ข้างคำว่า Files แล้วเลือก Script ตั้งชื่อให้ตรง แล้ววางโค้ดลงไป');
+  } else {
+    Logger.log('✅ ไฟล์ .gs ครบทุกไฟล์');
+  }
 }

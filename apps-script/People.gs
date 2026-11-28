@@ -6,12 +6,106 @@
 // ── อ่านข้อมูลทั้งหมดในครั้งเดียว ───────────────────────────
 // ระบบเดิมยิงคำขอทีละคนในลูป ทำให้หน้าเดียวยิงหลายสิบครั้ง
 // ที่นี่คืนทั้งผู้ปกครองและเด็กพร้อมกัน หน้าเว็บเรียกครั้งเดียวจบ
+// ── อายุและช่วงอายุ ─────────────────────────────────────────
+// คำนวณที่หลังบ้าน เพราะหน้าจอจัดกลุ่มและเรียงตามช่วงอายุ
+// ถ้าต่างคนต่างคำนวณ เด็กคนเดียวกันอาจตกคนละกลุ่มในคนละหน้า
+const AGE_BANDS = [
+  { id: 'b1', label: 'เตาะแตะ 1–3 ขวบ',     min: 0,  max: 3  },
+  { id: 'b2', label: 'อนุบาล 4–6 ขวบ',      min: 4,  max: 6  },
+  { id: 'b3', label: 'ประถมต้น 7–9 ขวบ',    min: 7,  max: 9  },
+  { id: 'b4', label: 'ประถมปลาย 10–12 ขวบ', min: 10, max: 12 },
+  { id: 'b5', label: 'โตกว่า 12 ขวบ',       min: 13, max: 99 },
+];
+
+function ageOf(dob) {
+  const s = String(dob || '');
+  if (s.length < 10) return null;
+
+  const t = todayTH();
+  let a = Number(t.slice(0, 4)) - Number(s.slice(0, 4));
+  // ยังไม่ถึงวันเกิดของปีนี้ ให้ลบหนึ่ง เทียบ MM-DD ตรง ๆ ได้เพราะเติมศูนย์หน้าแล้ว
+  if (s.slice(5, 10) > t.slice(5, 10)) a--;
+
+  return (a >= 0 && a < 30) ? a : null;
+}
+
+function bandOf(age) {
+  if (age === null) return 'b0';
+  for (let i = 0; i < AGE_BANDS.length; i++) {
+    if (age >= AGE_BANDS[i].min && age <= AGE_BANDS[i].max) return AGE_BANDS[i].id;
+  }
+  return 'b0';
+}
+
+// ── ความคืบหน้าของเด็กแต่ละคน แยกตามคอร์ส ──────────────────
+// หน้าเด็กแสดงหนึ่งแถบต่อหนึ่งคอร์สที่กำลังเรียน
+// เพื่อให้เห็นงานที่ค้างทันทีโดยไม่ต้องเปิดหน้าคอร์สมาเทียบ
+function progressByChild() {
+  const enrollments = readAll(SHEET.ENROLLMENTS);
+  const sessions    = readAll(SHEET.SESSIONS);
+  const courseMap   = indexBy(readAll(SHEET.COURSES), 'id');
+  const byEnroll    = groupBy(sessions, 'enrollmentId');
+  const out         = {};
+
+  enrollments.forEach(e => {
+    if (String(e.status) === 'closed') return;
+
+    const mine   = byEnroll[String(e.id)] || [];
+    const total  = Number(e.totalSessions) || 0;
+    const taught = mine.filter(s => s.status === SESSION_STATUS.COMPLETED).length;
+    const booked = mine.filter(s => s.status === SESSION_STATUS.SCHEDULED).length;
+    const k      = String(e.childId);
+
+    if (!out[k]) out[k] = [];
+    out[k].push({
+      enrollmentId: e.id,
+      courseId:     e.courseId,
+      courseName:   (courseMap[String(e.courseId)] || {}).name || '',
+      taught:       taught,
+      booked:       booked,
+      total:        total,
+      // ยังไม่ได้นัด = คาบที่จ่ายเงินมาแล้วแต่ยังไม่มีวัน คือของค้างที่ต้องตาม
+      unbooked:     Math.max(0, total - taught - booked),
+      pct:          total ? Math.round(taught * 100 / total) : 0,
+    });
+  });
+
+  return out;
+}
+
+// เติมข้อมูลที่หน้าจอต้องใช้ลงในข้อมูลเด็กดิบ ๆ
+// ไม่แตะฟิลด์เดิมเลย เพิ่มอย่างเดียว ฟอร์มแก้ไขจึงยังทำงานเหมือนเดิม
+function enrichChildren(children) {
+  const prog = progressByChild();
+
+  return children.map(c => {
+    const age = ageOf(c.dob);
+    return Object.assign({}, c, {
+      age:      age,
+      ageBand:  bandOf(age),
+      alerts:   childAlerts(c),
+      courses:  prog[String(c.id)] || [],
+    });
+  });
+}
+
 function getPeople(sess) {
   const parents  = readAll(SHEET.PARENTS);
   const children = readAll(SHEET.CHILDREN);
 
+  // ผู้ปกครองหนึ่งคนมีลูกกี่คน ใช้ทั้งการ์ดผู้ปกครองและการค้นหา
+  const kidsOf = (list, pid) => list
+    .filter(c => String(c.parentId) === String(pid))
+    .map(c => c.nickname || c.name || '');
+
+  const bands = AGE_BANDS.concat([{ id: 'b0', label: 'ยังไม่ได้กรอกวันเกิด' }]);
+
   if (sess.role === ROLE.ADMIN) {
-    return { parents, children, canEdit: true, canManage: true };
+    return {
+      parents: parents.map(p => Object.assign({}, p, { kids: kidsOf(children, p.id) })),
+      children: enrichChildren(children),
+      bands: bands, canEdit: true, canManage: true,
+    };
   }
 
   // ผู้ฝึกสอนต้องเห็นข้อมูลเด็กเพื่อความปลอดภัยระหว่างฝึก
@@ -22,8 +116,10 @@ function getPeople(sess) {
       parents: parents.map(p => ({
         id: p.id, name: p.name, nickname: p.nickname,
         phone: p.phone, phoneAlt: p.phoneAlt, lineId: p.lineId,
+        kids: kidsOf(children, p.id),
       })),
-      children,
+      children: enrichChildren(children),
+      bands: bands,
       canEdit: false,
       canManage: false,
     };
@@ -35,7 +131,13 @@ function getPeople(sess) {
   const myIds      = mine.map(p => String(p.id));
   const myChildren = children.filter(c => myIds.indexOf(String(c.parentId)) >= 0);
 
-  return { parents: mine, children: myChildren, canEdit: true, canManage: false };
+  return {
+    parents:  mine.map(p => Object.assign({}, p, { kids: kidsOf(myChildren, p.id) })),
+    children: enrichChildren(myChildren),
+    bands:    bands,
+    canEdit:  true,
+    canManage: false,
+  };
 }
 
 // ── รายการผู้ปกครองที่บัญชีนี้เป็นเจ้าของ ───────────────────

@@ -11,8 +11,16 @@
 // แยกกันแบบเดิมที่ทำให้ error หายไปเงียบ ๆ
 // ============================================================
 
+// เปิด URL นี้ในเบราว์เซอร์ได้เลย ใช้ดูว่าเวอร์ชันที่ Deploy ไว้เป็นตัวไหน
+// actions บอกว่าโค้ดที่เสิร์ฟอยู่ตอนนี้รู้จักคำสั่งอะไรบ้าง
+// ถ้าไม่เห็นคำสั่งที่เพิ่งเพิ่ม แปลว่ายังไม่ได้ Deploy เวอร์ชันใหม่
 function doGet(e) {
-  return json({ ok: true, data: { service: 'Homey Kids D Shine API', time: nowTH() } });
+  return json({ ok: true, data: {
+    service: 'Homey Kids D Shine API',
+    version: APP_VERSION,
+    time:    nowTH(),
+    actions: Object.keys(ROUTES).sort(),
+  } });
 }
 
 function doPost(e) {
@@ -102,6 +110,7 @@ const ROUTES = {
   toggleCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => toggleCourse(s, p) },
   removeCourse:         { roles: [ROLE.ADMIN], fn: (s, p) => removeCourse(s, p) },
   saveEnrollment:       { roles: [ROLE.ADMIN], fn: (s, p) => saveEnrollment(s, p) },
+  setEnrollmentTrainer: { roles: [ROLE.ADMIN], fn: (s, p) => setEnrollmentTrainer(s, p) },
   closeEnrollment:      { roles: [ROLE.ADMIN], fn: (s, p) => closeEnrollment(s, p) },
   removeEnrollment:     { roles: [ROLE.ADMIN], fn: (s, p) => removeEnrollment(s, p) },
 
@@ -116,6 +125,34 @@ const ROUTES = {
   getActivityBoard: { fn: (s) => getActivityBoard(s) },   // ตัวฟังก์ชันกรองตามสิทธิ์เอง
   saveActivity:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => saveActivity(s, p) },
   removeActivity:   { roles: [ROLE.ADMIN],               fn: (s, p) => removeActivity(s, p) },
+
+  // Phase 6 — การเงิน
+  // ผู้ฝึกสอนเปิดหน้าการเงินได้ แต่เห็นเฉพาะของตัวเอง ตัวฟังก์ชันกรองเอง
+  // เงินออก — ค่าสอนของผู้ฝึกสอน
+  getFinanceBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getFinanceBoard(s, p) },
+  getPayoutDetail: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getPayoutDetail(s, p) },
+  createPayout:    { roles: [ROLE.ADMIN], fn: (s, p) => createPayout(s, p) },
+  markPayoutPaid:  { roles: [ROLE.ADMIN], fn: (s, p) => markPayoutPaid(s, p) },
+  cancelPayout:    { roles: [ROLE.ADMIN], fn: (s, p) => cancelPayout(s, p) },
+
+  // เงินเข้า — ค่าคอร์สจากผู้ปกครอง ตัวฟังก์ชันกรองตามสิทธิ์เอง
+  getIncomeBoard:  { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s, p) => getIncomeBoard(s, p) },
+  getPayQR:        { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s, p) => getPayQR(s, p) },
+  getSettings:     { roles: [ROLE.ADMIN, ROLE.PARENT], fn: (s)    => getSettings(s) },
+  saveSettings:    { roles: [ROLE.ADMIN], fn: (s, p) => saveSettings(s, p) },
+  recordPayment:   { roles: [ROLE.ADMIN], fn: (s, p) => recordPayment(s, p) },
+  removePayment:   { roles: [ROLE.ADMIN], fn: (s, p) => removePayment(s, p) },
+
+  // สรุปการเงิน — รวมรายรับรายจ่ายของศูนย์ ผู้ดูแลระบบเท่านั้น
+  getLedger:       { roles: [ROLE.ADMIN], fn: (s, p) => getLedger(s, p) },
+
+  // Phase 7 — เช็กชื่อและคาบชดเชย
+  // ผู้ฝึกสอนเช็กชื่อคาบของตัวเองได้ แต่ตัดสินคาบที่ขาดเป็นงานของผู้ดูแลระบบ
+  getAttendanceBoard: { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => getAttendanceBoard(s, p) },
+  getAlerts:          { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s)    => getAlerts(s) },
+  markAttendance:     { roles: [ROLE.ADMIN, ROLE.TRAINER], fn: (s, p) => markAttendance(s, p) },
+  decideMakeup:       { roles: [ROLE.ADMIN], fn: (s, p) => decideMakeup(s, p) },
+  undoMakeup:         { roles: [ROLE.ADMIN], fn: (s, p) => undoMakeup(s, p) },
 
   // ผู้ใช้งานและผู้ฝึกสอน
   getUsers:        { roles: [ROLE.ADMIN], fn: (s)    => getUsers(s) },

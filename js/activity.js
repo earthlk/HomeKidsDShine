@@ -103,7 +103,10 @@ const Activity = {
     // จัดกลุ่มคาบสอนที่มีเด็กหลายคน ครูจะได้บันทึกทีเดียวจบ
     const groups = this.groupRows(rows);
 
-    box.innerHTML = groups.map(g => this.card(g)).join('');
+    box.innerHTML = `<div class="qlist">
+      ${this.head()}
+      ${groups.map(g => this.line(g)).join('')}
+    </div>`;
 
     box.querySelectorAll('[data-open]').forEach(b => {
       b.onclick = () => Activity.isParent()
@@ -126,58 +129,98 @@ const Activity = {
     return out;
   },
 
-  card(g) {
+  // ── แถวงานค้าง ────────────────────────────────────────────
+  // ของเดิมเป็นการ์ดเต็มความกว้าง ข้อความห้าสิบตัวอักษรกินพื้นที่พันกว่าพิกเซล
+  // และแปะป้าย "สถานที่" "ค้างมา" ซ้ำทุกแถว ทั้งที่แท็บบอกอยู่แล้วว่ากำลังดูอะไร
+  // เปลี่ยนเป็นคอลัมน์จริงที่มีหัวตารางครั้งเดียว แล้วจำกัดความกว้างไว้
+  // เพราะหน้านี้คือคิวงานที่ต้องเคลียร์ ไม่ใช่หน้าที่เอาไว้เดินดูทีละใบ
+  cols() {
+    if (this.isParent()) return ['วันที่', 'คอร์ส', 'ผู้สอน', 'คะแนน', ''];
+    return [
+      'เวลา',
+      'คอร์สและวันที่',
+      'เด็ก',
+      this.data.isAdmin ? 'ผู้สอน' : 'สถานที่',
+      this.tab === 'pending' ? 'ค้างมา' : 'คะแนน',
+      '',
+    ];
+  },
+
+  head() {
+    const mod = this.isParent() ? ' qhead--p' : '';
+    return `<div class="qhead${mod}">
+      ${this.cols().map(c => `<span>${UI.esc(c)}</span>`).join('')}
+    </div>`;
+  },
+
+  stars(g) {
+    return g.items.map(x => x.rating ? '★'.repeat(Number(x.rating)) : '—').join(' ');
+  },
+
+  line(g) {
     const r    = g.lead;
     const many = g.items.length > 1;
     const late = this.daysLate(r.date);
 
     // รวมข้อควรระวังของเด็กทุกคนในคาบ ตัดที่ซ้ำออก
+    // ต้องอยู่ติดชื่อเด็ก ไม่ใช่บรรทัดล่างสุดของการ์ด เพราะเป็นเรื่องความปลอดภัย
     const alerts = [];
     g.items.forEach(x => (x.alerts || []).forEach(a => {
       if (alerts.indexOf(a) < 0) alerts.push(a);
     }));
 
-    return `
-      <button class="acard acard--log" data-open="${UI.esc(g.key)}">
-        <span class="acard__time">
-          <span class="acard__from">${UI.esc(r.startTime)}</span>
-          <span class="acard__to">${UI.esc(r.endTime)}</span>
-        </span>
+    const names = g.items.map(x => x.childName).join(', ');
 
-        <span class="acard__col">
-          <span class="acard__name">${UI.esc(r.courseName || 'ไม่ระบุคอร์ส')}</span>
-          <span class="acard__k">${UI.thaiDate(r.date, 'short')}</span>
-          <span class="acard__v">${UI.esc(g.items.map(x => x.childName).join(', '))}</span>
-        </span>
-
-        <span class="acard__col">
-          ${this.data.isAdmin
-            ? `<span class="acard__k">ผู้ฝึกสอน</span>
-               <span class="acard__v">${UI.esc(r.trainerName || '—')}</span>`
-            : `<span class="acard__k">สถานที่</span>
-               <span class="acard__v">${UI.esc(r.location || '—')}</span>`}
-          ${many ? `<span class="acard__meta">กลุ่ม ${g.items.length} คน</span>` : ''}
-        </span>
-
-        <span class="acard__col">
-          ${r.logged
-            ? `<span class="acard__k">คะแนน</span>
-               <span class="acard__v hrow__stars">${g.items.map(x =>
-                   x.rating ? '★'.repeat(Number(x.rating)) : '—').join(' ')}</span>`
-            : `<span class="acard__k">ค้างมา</span>
-               <span class="acard__v">${late}</span>`}
-        </span>
-
-        ${r.logged
-          ? '<span class="pchip pchip--ok">บันทึกแล้ว</span>'
-          : `<span class="pchip ${late === 'วันนี้' ? 'pchip--warn' : 'pchip--danger'}">รอบันทึก</span>`}
-
-        ${r.summary || alerts.length ? `
-          <span class="acard__foot">
-            ${alerts.length ? `<span class="acard__alert">${UI.esc(alerts.join(' · '))}</span>` : ''}
-            ${r.summary ? `<span class="acard__meta">${UI.esc(r.summary)}</span>` : ''}
-          </span>` : ''}
+    if (this.isParent()) {
+      return `<button class="qln qln--p" data-open="${UI.esc(g.key)}">
+        <span class="qln__c">${UI.thaiDate(r.date, 'short')}</span>
+        <span class="qln__c qln__c--strong">${UI.esc(r.courseName || 'ไม่ระบุคอร์ส')}</span>
+        <span class="qln__c">${UI.esc(r.trainerName || '—')}</span>
+        <span class="qln__c qln__stars">${this.stars(g)}</span>
+        <span class="qln__go">ดู</span>
       </button>`;
+    }
+
+    return `<button class="qln" data-open="${UI.esc(g.key)}">
+      <span class="qln__c qln__time">
+        <b>${UI.esc(r.startTime)}</b><small>${UI.esc(r.endTime)}</small>
+      </span>
+
+      <span class="qln__c qln__c--strong">
+        ${UI.esc(r.courseName || 'ไม่ระบุคอร์ส')}
+        <small>${UI.thaiDate(r.date, 'short')}</small>
+      </span>
+
+      <span class="qln__c">
+        ${UI.esc(names)}${many ? ` <span class="qln__n">${g.items.length} คน</span>` : ''}
+        ${alerts.length ? `<small class="warn">${UI.esc(alerts.join(' · '))}</small>` : ''}
+      </span>
+
+      <span class="qln__c">${UI.esc(
+        (this.data.isAdmin ? r.trainerName : r.location) || '—')}</span>
+
+      <span class="qln__c ${this.tab === 'pending' ? this.lateClass(r.date) : ''}">
+        ${this.tab === 'pending' ? UI.esc(late)
+          : `<span class="qln__stars">${this.stars(g)}</span>`}
+      </span>
+
+      <span class="qln__go">${this.tab === 'pending' ? 'บันทึก' : 'แก้ไข'}</span>
+    </button>`;
+  },
+
+  // ถ้าทาสีแดงทุกแถวที่เลยกำหนด สีแดงก็ไม่ได้บอกอะไรอีกต่อไป
+  // ค้างสองสามวันเป็นเรื่องปกติของคนสอนทั้งวัน ค้างสองสัปดาห์คือคนจำไม่ได้แล้ว
+  lateClass(date) {
+    const n = this.lateDays(date);
+    if (n > 14) return 'qln__c--late';
+    if (n >= 3) return 'qln__c--soon';
+    return '';
+  },
+
+  lateDays(date) {
+    const a = new Date(date + 'T00:00:00');
+    const b = new Date(UI.today() + 'T00:00:00');
+    return Math.round((b - a) / 86400000);
   },
 
   daysLate(date) {
@@ -291,6 +334,16 @@ const Activity = {
       };
     });
 
+    document.querySelectorAll('[data-att]').forEach(b => {
+      b.onclick = () => {
+        const i = b.dataset.attkid;
+        document.getElementById('a_att_' + i).value = b.dataset.att;
+        document.querySelectorAll(`[data-attkid="${i}"]`).forEach(x => {
+          x.classList.toggle('is-on', x === b);
+        });
+      };
+    });
+
     People.bindSheet({
       close: () => UI.closeSheet(),
       save:  () => Activity.submit(g),
@@ -298,7 +351,12 @@ const Activity = {
     });
   },
 
+  // คาบที่ยังไม่เคยเช็กชื่อ ตั้งต้นว่า "มา" เพราะคนกรอกฟอร์มนี้
+  // คือคนที่เพิ่งสอนเด็กคนนี้เสร็จ แต่ยังกดเปลี่ยนเป็นสายหรือขาดได้ในแตะเดียว
+  // ตั้งต้นแบบเห็นได้ ไม่ใช่บันทึกเงียบ ๆ ตอนกดบันทึก
   childBlock(x, i) {
+    const att = x.attendance || 'present';
+
     return `
       <div class="kidblock">
         <div class="kidblock__head">
@@ -314,10 +372,20 @@ const Activity = {
         ${x.alerts && x.alerts.length
           ? `<p class="acard__alert">${UI.esc(x.alerts.join(' · '))}</p>` : ''}
 
+        <div class="kidblock__att">
+          <span class="kidblock__attk">${x.attendance ? 'เช็กชื่อไว้ว่า' : 'เช็กชื่อ'}</span>
+          <span class="markset markset--sm">
+            ${Object.keys(Attend.MARK).map(k => `
+              <button type="button" class="markbtn markbtn--${k}${att === k ? ' is-on' : ''}"
+                data-att="${k}" data-attkid="${i}">${Attend.MARK[k]}</button>`).join('')}
+          </span>
+        </div>
+
         <textarea class="field__input" id="a_note_${i}" rows="2"
           placeholder="พัฒนาการและสิ่งที่สังเกตเห็นของ${UI.esc(x.childName)}">${UI.esc(x.note)}</textarea>
 
         <input type="hidden" id="a_rating_${i}" value="${UI.esc(x.rating)}">
+        <input type="hidden" id="a_att_${i}" value="${UI.esc(att)}">
         <input type="hidden" id="a_session_${i}" value="${UI.esc(x.id)}">
       </div>`;
   },
@@ -332,9 +400,10 @@ const Activity = {
       skills:   skills.join(', '),
       nextGoal: People.val('a_nextGoal'),
       children: g.items.map((x, i) => ({
-        sessionId: People.val('a_session_' + i),
-        rating:    People.val('a_rating_' + i),
-        note:      People.val('a_note_' + i),
+        sessionId:  People.val('a_session_' + i),
+        rating:     People.val('a_rating_' + i),
+        note:       People.val('a_note_' + i),
+        attendance: People.val('a_att_' + i),
       })),
     };
 
@@ -343,7 +412,8 @@ const Activity = {
     const res = await API.call('saveActivity', payload);
     if (!res.ok) { UI.toast(res.message, 'error'); return; }
 
-    UI.toast('บันทึกแล้ว ' + res.data.count + ' คน');
+    UI.toast('บันทึกแล้ว ' + res.data.count + ' คน' +
+      (res.data.checked ? ' · เช็กชื่อให้ด้วยแล้ว' : ''));
     UI.closeSheet();
     this.reload();
   },

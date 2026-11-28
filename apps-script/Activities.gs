@@ -81,6 +81,8 @@ function getActivityBoard(sess) {
         childName:   child.nickname || child.name || '',
         courseName:  course.name || '',
         alerts:      childAlerts(child),
+        // ฟอร์มบันทึกกิจกรรมเช็กชื่อได้ด้วย จึงต้องรู้ว่าคาบนี้เช็กไปแล้วหรือยัง
+        attendance:  s.attendance || '',
 
         logged:   !!act.id,
         // บันทึกของคาบ เหมือนกันทุกคนในคาบเดียวกัน
@@ -153,7 +155,8 @@ function saveActivity(sess, p) {
     if (!me) throw new Error('บัญชีนี้ยังไม่ได้ผูกกับข้อมูลผู้ฝึกสอน');
   }
 
-  let saved = 0;
+  let saved   = 0;
+  let checked = 0;
 
   kids.forEach(kid => {
     const id  = String(kid.sessionId || '');
@@ -170,7 +173,20 @@ function saveActivity(sess, p) {
       throw new Error('บันทึกได้เฉพาะนัดที่ตัวเองเป็นผู้สอน');
     }
 
-    const rating = String(kid.rating || '').trim();
+    // เช็กชื่อมาพร้อมฟอร์มบันทึกกิจกรรม เพราะผู้สอนอยู่ตรงนั้นอยู่แล้ว
+    // ไม่ส่งมาก็ไม่เป็นไร ค่าเดิมคงอยู่ ยังไปเช็กทีหลังที่หน้าเช็กชื่อได้
+    // ตัวเรียกตรวจสิทธิ์และวันที่ไปแล้วข้างบน applyAttendance จึงไม่ตรวจซ้ำ
+    // หมายเหตุของการเช็กชื่อกับบันทึกพัฒนาการเป็นคนละเรื่องกัน
+    // จึงไม่ยัดบันทึกพัฒนาการลงช่องหมายเหตุการขาด
+    const absent = String(kid.attendance || '') === ATTENDANCE.ABSENT;
+    if (kid.attendance !== undefined && kid.attendance !== null
+        && String(kid.attendance) !== '') {
+      applyAttendance(row, kid.attendance, '', sess.userId);
+      checked++;
+    }
+
+    // เด็กที่ไม่ได้มา ให้คะแนนไม่ได้ เพราะไม่มีอะไรให้ประเมิน
+    const rating = absent ? '' : String(kid.rating || '').trim();
     if (rating && (Number(rating) < 1 || Number(rating) > 5)) {
       throw new Error('คะแนนต้องอยู่ระหว่าง 1 ถึง 5');
     }
@@ -187,7 +203,9 @@ function saveActivity(sess, p) {
     else     insertRow(SHEET.ACTIVITIES, fields);
 
     // บันทึกแล้วนัดจึงนับเป็นสอนแล้ว ยอดในหน้าคอร์สและค่าสอนอ้างอิงจากตรงนี้
-    if (row.status !== SESSION_STATUS.COMPLETED) {
+    // ยกเว้นเด็กที่ขาด คาบนั้นยังไม่ใช่คาบที่สอนแล้ว ต้องรอผู้ดูแลระบบตัดสินก่อน
+    // ว่าจะคืนคาบ นัดชดเชย หรือตัดคาบ ให้เหมือนกับการเช็กขาดที่หน้าเช็กชื่อ
+    if (!absent && row.status !== SESSION_STATUS.COMPLETED) {
       updateRow(SHEET.SESSIONS, { id: id, status: SESSION_STATUS.COMPLETED });
     }
 
@@ -195,7 +213,7 @@ function saveActivity(sess, p) {
   });
 
   audit(sess.userId, 'LOG_ACTIVITY', 'session', kids.map(k => k.sessionId).join(','));
-  return { count: saved };
+  return { count: saved, checked: checked };
 }
 
 // ── ลบบันทึก ────────────────────────────────────────────────
@@ -205,6 +223,14 @@ function removeActivity(sess, p) {
   const act = readAll(SHEET.ACTIVITIES)
     .find(a => String(a.sessionId) === String(p.sessionId));
   if (!act) throw new Error('ไม่พบบันทึกกิจกรรม');
+
+  // ลบบันทึกแล้วนัดจะกลับไปเป็น "ยังไม่สอน" ซึ่งใช้ไม่ได้ถ้าจ่ายค่าสอนไปแล้ว
+  // ตัวเลขในรอบที่จ่ายไปแล้วจะไม่ตรงกับคาบที่นับได้จริงทันที
+  const paid = paidPayoutOf(p.sessionId);
+  if (paid) {
+    throw new Error('คาบนี้อยู่ในรอบจ่ายค่าสอนที่โอนเงินไปแล้ว (' +
+      paid.periodStart + ' ถึง ' + paid.periodEnd + ') ลบบันทึกไม่ได้');
+  }
 
   deleteRow(SHEET.ACTIVITIES, act.id);
   updateRow(SHEET.SESSIONS, { id: p.sessionId, status: SESSION_STATUS.SCHEDULED });
